@@ -7,7 +7,7 @@
 
 ## Current phase: 0 — Repository, Environment, and Guardrails
 
-**Status:** IN_PROGRESS
+**Status:** COMPLETE
 
 ---
 
@@ -27,6 +27,7 @@
 - [x] `src/contextforge/__init__.py` — created (Phase 0 skeleton)
 - [x] `tests/unit/test_smoke.py` — created (4 smoke tests)
 - [x] Directory stubs: `data/raw/`, `data/processed/`, `data/qa/`, `data/manifests/`, `artifacts/faiss/`, `artifacts/adapters/`, `artifacts/evaluation/`, `artifacts/plots/`, `scripts/`, `frontend/`, `tests/integration/`, `tests/fixtures/`
+- [x] Phase 0 final verification pass completed — full implementation plan read (all 1633 lines), all acceptance criteria re-verified, all tests re-run
 
 ---
 
@@ -50,12 +51,31 @@ None for Phase 0.
 ## Last verified commands
 
 ```
-git init                          -> Initialized empty Git repository
-python --version                  -> Python 3.13.9
-pip --version                     -> pip 25.2
-pip install -e ".[dev]"           -> see install output
-python -c "import contextforge"   -> 0 (success)
-pytest tests/                     -> see test output
+git init
+  -> Initialized empty Git repository in .../ContextForge/.git/
+
+python --version
+  -> Python 3.13.9
+
+pip --version
+  -> pip 25.2
+
+.venv\Scripts\python.exe -m pip install -e ".[dev]"
+  -> Successfully installed contextforge-0.1.0 pytest-9.1.1 pytest-cov-7.1.0 (EXIT: 0)
+
+.venv\Scripts\python.exe -c "import contextforge; print(contextforge.__version__)"
+  -> import OK, version: 0.1.0
+
+.venv\Scripts\python.exe -m pytest tests/ -v
+  -> 4 passed in 0.15s
+     tests/unit/test_smoke.py::test_package_importable PASSED
+     tests/unit/test_smoke.py::test_version_string_present PASSED
+     tests/unit/test_smoke.py::test_no_ml_imports_at_phase_0 PASSED
+     tests/unit/test_smoke.py::test_package_in_src_layout PASSED
+
+git commit
+  -> [main (root-commit) 3276ccd] feat(phase-0): repository skeleton, environment, and guardrails
+     21 files changed, 2865 insertions(+)
 ```
 
 ---
@@ -64,7 +84,7 @@ pytest tests/                     -> see test output
 
 - Python 3.13 is the runtime; all future dependencies must be verified for 3.13 compatibility before adding them to `pyproject.toml`.
 - `bitsandbytes` may not support Python 3.13 on Windows — must be verified at Phase 4/8 when quantisation is needed.
-- The `build-backend` entry in `pyproject.toml` uses the legacy setuptools backend; upgrade to `setuptools.build_meta` if needed.
+- `build-backend` is correctly set to `setuptools.build_meta` (initial draft had wrong value; corrected before first commit).
 
 ---
 
