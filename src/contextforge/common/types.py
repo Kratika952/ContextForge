@@ -1,7 +1,7 @@
 """
 ContextForge common data types and custom exceptions.
 =====================================================
-Core data contracts shared across ingestion, storage, and retrieval.
+Core data contracts shared across ingestion, storage, retrieval, and pipelines.
 """
 
 from __future__ import annotations
@@ -42,7 +42,23 @@ class DuplicateDocumentError(IngestionError):
     """Raised when a document with identical checksum has already been ingested."""
 
 
-# ── Data Contracts ───────────────────────────────────────────────────────────
+class RetrievalError(ContextForgeError):
+    """Base exception for retrieval or indexing errors."""
+
+
+class IndexNotFoundError(RetrievalError, FileNotFoundError):
+    """Raised when a requested FAISS index artifact cannot be found."""
+
+
+class IncompatibleIndexError(RetrievalError):
+    """Raised when an index metadata check fails (e.g. model mismatch, dimension mismatch)."""
+
+
+class EmbeddingError(RetrievalError):
+    """Raised when text embedding fails."""
+
+
+# ── Ingestion Data Contracts ──────────────────────────────────────────────────
 
 
 @dataclass
@@ -71,7 +87,7 @@ class ExtractedUnit:
     unit_index: int  # 1-indexed page number (PDF) or section index (Markdown)
     text: str
     char_count: int
-    heading: str | None = None  # Section title or heading if available
+    heading: str | None = None  # Section title or heading for Markdown
 
     @property
     def page_number(self) -> int:
@@ -115,3 +131,36 @@ class ExtractedDocument:
     def total_char_count(self) -> int:
         """Total characters extracted across all units."""
         return sum(unit.char_count for unit in self.units)
+
+
+# ── Chunking & Retrieval Data Contracts ──────────────────────────────────────
+
+
+@dataclass
+class Chunk:
+    """Segmented text chunk with provenance tracking matching Section 6.2 of IMPLEMENTATION_PLAN.md."""
+
+    id: str
+    document_id: str
+    chunk_index: int
+    text: str
+    token_count: int
+    content_hash: str
+    chunk_profile: str = "medium"
+    page_start: int | None = None
+    page_end: int | None = None
+    section_heading: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class RetrievedChunk:
+    """Retrieved chunk matching Section 6.3 of IMPLEMENTATION_PLAN.md."""
+
+    chunk_id: str
+    document_id: str
+    text: str
+    score: float
+    rank: int
+    source_label: str
+    metadata: dict[str, Any] = field(default_factory=dict)

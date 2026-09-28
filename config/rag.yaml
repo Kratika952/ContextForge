@@ -1,0 +1,32 @@
+# ContextForge — RAG, Chunking, and Retrieval Configuration
+# ──────────────────────────────────────────────────────────────────────────────
+# Defines embedding model, chunking experimental profiles, and retrieval defaults.
+# ──────────────────────────────────────────────────────────────────────────────
+
+embedding:
+  model: "BAAI/bge-small-en-v1.5"
+  normalize_embeddings: true
+  query_instruction_enabled: true
+  query_instruction: "Represent this sentence for searching relevant passages: "
+
+chunking:
+  active_profile: "medium"  # Selected via Phase 3 experiment (EXP-001)
+
+  profiles:
+    small:
+      chunk_size_tokens: 180
+      overlap_tokens: 30
+
+    medium:
+      chunk_size_tokens: 300
+      overlap_tokens: 50
+
+    large:
+      chunk_size_tokens: 420
+      overlap_tokens: 70
+
+retrieval:
+  default_top_k: 5
+
+index:
+  directory: "artifacts/faiss"

@@ -1,29 +1,41 @@
 """Common utilities, types, and configuration for ContextForge."""
 
 from contextforge.common.types import (
+    Chunk,
     ContextForgeError,
     Document,
     DocumentExtractionError,
     DocumentNotFoundError,
     DuplicateDocumentError,
+    EmbeddingError,
     ExtractedDocument,
     ExtractedPage,
     ExtractedUnit,
+    IncompatibleIndexError,
+    IndexNotFoundError,
     IngestionError,
     NoExtractableTextError,
+    RetrievedChunk,
+    RetrievalError,
     UnsupportedDocumentTypeError,
 )
 
 __all__ = [
+    "Chunk",
     "ContextForgeError",
     "Document",
     "DocumentExtractionError",
     "DocumentNotFoundError",
     "DuplicateDocumentError",
+    "EmbeddingError",
     "ExtractedDocument",
     "ExtractedPage",
     "ExtractedUnit",
+    "IncompatibleIndexError",
+    "IndexNotFoundError",
     "IngestionError",
     "NoExtractableTextError",
+    "RetrievedChunk",
+    "RetrievalError",
     "UnsupportedDocumentTypeError",
 ]

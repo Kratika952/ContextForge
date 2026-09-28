@@ -22,20 +22,28 @@ def test_version_string_present() -> None:
     assert len(contextforge.__version__) > 0
 
 
+import subprocess
+
+
 def test_no_ml_imports_at_phase_0() -> None:
     """Phase 0 package must not silently pull in heavy ML libraries.
 
     This test documents intent: if torch, transformers, or similar are
     accidentally imported by the package init, this test catches it early.
+    Runs in an isolated process to ensure no pollution from retrieval tests.
     """
-    import contextforge  # noqa: PLC0415,F401
-
-    heavy_libs = ["torch", "transformers", "sentence_transformers", "faiss"]
-    for lib in heavy_libs:
-        assert lib not in sys.modules, (
-            f"'{lib}' was imported by contextforge at Phase 0. "
-            "Heavy ML imports must not appear in the package until the relevant phase."
-        )
+    cmd = [
+        sys.executable,
+        "-c",
+        (
+            "import sys, contextforge; "
+            "heavy = ['torch', 'transformers', 'sentence_transformers', 'faiss']; "
+            "loaded = [m for m in heavy if m in sys.modules]; "
+            "assert not loaded, f'Heavy ML libraries imported by contextforge: {loaded}'"
+        ),
+    ]
+    res = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    assert res.returncode == 0, res.stderr
 
 
 def test_package_in_src_layout() -> None:

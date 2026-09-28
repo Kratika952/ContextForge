@@ -1,0 +1,15 @@
+{"id": "q001", "question": "How does OWASP recommend preventing Broken Access Control vulnerabilities?", "category": "mitigation", "relevant_document_ids": ["a01-2025-broken-access-control"]}
+{"id": "q002", "question": "What is SQL injection and how can developers prevent it?", "category": "mitigation", "relevant_document_ids": ["a05-2025-injection"]}
+{"id": "q003", "question": "What are Cryptographic Failures according to OWASP Top 10:2025?", "category": "factual_definition", "relevant_document_ids": ["a04-2025-cryptographic-failures"]}
+{"id": "q004", "question": "What is the new Govern function introduced in NIST CSF 2.0?", "category": "factual_definition", "relevant_document_ids": ["nist-csf-20"]}
+{"id": "q005", "question": "What are the six core functions of the NIST Cybersecurity Framework 2.0?", "category": "framework_mapping", "relevant_document_ids": ["nist-csf-20"]}
+{"id": "q006", "question": "How are Community Profiles and Organizational Profiles defined in NIST CSF 2.0?", "category": "procedural_guidance", "relevant_document_ids": ["nist-csf-20"]}
+{"id": "q007", "question": "What are CISA Cross-Sector Cybersecurity Performance Goals?", "category": "factual_definition", "relevant_document_ids": ["cisa-cpg-20"]}
+{"id": "q008", "question": "What guidance does CISA CPG 2.0 provide for Multi-Factor Authentication?", "category": "control_guidance", "relevant_document_ids": ["cisa-cpg-20"]}
+{"id": "q009", "question": "What are Software Supply Chain Failures in OWASP Top 10:2025?", "category": "risk_explanation", "relevant_document_ids": ["a03-2025-software-supply-chain-failures"]}
+{"id": "q010", "question": "What constitutes Insecure Design and how is it distinguished from insecure implementation?", "category": "factual_definition", "relevant_document_ids": ["a06-2025-insecure-design"]}
+{"id": "q011", "question": "What are Security Logging and Alerting Failures and why are they critical?", "category": "risk_explanation", "relevant_document_ids": ["a09-2025-security-logging-and-alerting-failures"]}
+{"id": "q012", "question": "How does CISA CPG recommend managing default or shared credentials?", "category": "recommendation", "relevant_document_ids": ["cisa-cpg-20"]}
+{"id": "q013", "question": "What does NIST CSF 2.0 say about Cybersecurity Supply Chain Risk Management?", "category": "control_guidance", "relevant_document_ids": ["nist-csf-20"]}
+{"id": "q014", "question": "What are Authentication Failures according to OWASP Top 10:2025?", "category": "factual_definition", "relevant_document_ids": ["a07-2025-authentication-failures"]}
+{"id": "q015", "question": "What is Mishandling of Exceptional Conditions in OWASP 2025?", "category": "factual_definition", "relevant_document_ids": ["a10-2025-mishandling-of-exceptional-conditions"]}

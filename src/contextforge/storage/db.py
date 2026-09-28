@@ -44,6 +44,20 @@ def get_connection(db_path: Path | str | None = None) -> sqlite3.Connection:
     return conn
 
 
+def _migrate_schema(conn: sqlite3.Connection) -> None:
+    """Apply incremental column migrations if tables exist with older schemas."""
+    # Check chunks table columns
+    cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='chunks'")
+    if cursor.fetchone():
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(chunks)").fetchall()}
+        if "chunk_profile" not in cols:
+            conn.execute("ALTER TABLE chunks ADD COLUMN chunk_profile TEXT NOT NULL DEFAULT 'medium';")
+        if "section_heading" not in cols:
+            conn.execute("ALTER TABLE chunks ADD COLUMN section_heading TEXT;")
+        if "metadata_json" not in cols:
+            conn.execute("ALTER TABLE chunks ADD COLUMN metadata_json TEXT NOT NULL DEFAULT '{}';")
+
+
 def init_db(db_path: Path | str | None = None) -> sqlite3.Connection:
     """Initialize database tables according to schema.sql.
 
@@ -54,6 +68,7 @@ def init_db(db_path: Path | str | None = None) -> sqlite3.Connection:
         Initialized sqlite3.Connection.
     """
     conn = get_connection(db_path)
+    _migrate_schema(conn)
     with open(_SCHEMA_PATH, "r", encoding="utf-8") as f:
         schema_sql = f.read()
 

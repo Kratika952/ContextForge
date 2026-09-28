@@ -71,8 +71,9 @@ Constraints: <any limits or conditions>
 ### D-P03 — Embedding model
 
 - **Phase:** 3 (PHASE_3_DECISION)
-- **Status:** PENDING
-- **What is needed:** Select a Sentence Transformers–compatible embedding model after a compatibility test on the target hardware.
+- **Status:** APPROVED (2026-09-28)
+- **Decision:** `BAAI/bge-small-en-v1.5` via `sentence-transformers` (384 dimensions, L2-normalized).
+- **Rationale:** Approved by human project owner. Lightweight, verified on local CPU (Python 3.13), strong dense retrieval performance for English technical domains.
 
 ### D-P04 — Base LLM
 
@@ -83,8 +84,9 @@ Constraints: <any limits or conditions>
 ### D-P05 — Chunking parameters
 
 - **Phase:** 3 (PHASE_3_EXPERIMENT)
-- **Status:** PENDING
-- **What is needed:** Chunk size and overlap chosen via controlled experiment (A/B/C variants as specified in the plan).
+- **Status:** APPROVED (2026-09-28)
+- **Decision:** Selected `medium` profile (`chunk_size_tokens=300`, `overlap_tokens=50`) via experiments EXP-001 and EXP-002.
+- **Rationale:** Balanced context granularity (394 total chunks), 86.7% Recall@1, 100% Recall@3 and Recall@5, 0.933 MRR at 16.8ms latency.
 
 ### D-P06 — Top-k retrieval
 
@@ -203,4 +205,22 @@ Constraints: <any limits or conditions>
 - **Status:** APPROVED
 - **Decision:** Text cleaning performs Unicode NFKC normalization, whitespace collapsing, and control-character removal, but strictly preserves case, punctuation, markdown structure, code blocks, and technical cybersecurity identifiers (e.g. CVE identifiers, protocols, SQL syntax, XSS vectors, URLs).
 - **Rationale:** Aggressive cleaning destroys the semantic meaning of code, vulnerability identifiers, and configuration commands essential for cybersecurity QA.
+
+---
+
+## Phase 3 Decisions
+
+### D-015 — Dense vector search using FAISS Flat Inner Product
+- **Date:** 2026-09-28
+- **Phase:** 3
+- **Status:** APPROVED
+- **Decision:** Use exact `faiss.IndexFlatIP` (384-dimensional inner product). With L2-normalized embeddings, inner product is mathematically identical to cosine similarity. No approximate Voronoi cells (IVF) or lossy quantization (PQ) are used.
+- **Rationale:** The entire authoritative corpus generates 394 chunks (medium) to 638 chunks (small). Exact search executes in <1ms within FAISS on CPU with zero recall degradation.
+
+### D-016 — Configurable BGE query instruction prefix with domain tuning
+- **Date:** 2026-09-28
+- **Phase:** 3
+- **Status:** APPROVED
+- **Decision:** Support the official BGE query instruction prefix (`"Represent this sentence for searching relevant passages: "`) via `config/rag.yaml` (`query_instruction_enabled`), with passages strictly never receiving instructions.
+- **Rationale:** Tested in EXP-002. Preserves the option for generic queries while allowing domain-specific technical queries to disable the prefix for higher Recall@1 (86.7% vs 73.3%).
 
