@@ -54,17 +54,19 @@ Constraints: <any limits or conditions>
 
 ### D-P01 — Domain
 
-- **Phase:** 1 (HUMAN_DECISION_REQUIRED)
-- **Status:** PENDING
-- **What is needed:** The human must select a bounded domain for the QA system (e.g., software documentation, cybersecurity guidance, university regulations, research literature).
-- **Blocking:** Phase 1 cannot start until this is resolved.
+- **Phase:** 1
+- **Status:** APPROVED (2026-09-28)
+- **Decision:** Domain is **cybersecurity knowledge and defensive security guidance**.
+- **Rationale:** Bounded, high-value domain with multiple freely accessible authoritative documents (OWASP, NIST, CISA). Clear inclusion/exclusion boundary between defensive and offensive content.
+- **Constraints:** Offensive security operations are explicitly out of scope.
 
 ### D-P02 — Corpus sources
 
-- **Phase:** 1 (HUMAN_DECISION_REQUIRED)
-- **Status:** PENDING
-- **What is needed:** Specific document sources, licensing confirmation, and at least 3 representative documents.
-- **Blocking:** Phase 1 cannot start until this is resolved.
+- **Phase:** 1
+- **Status:** APPROVED (2026-09-28)
+- **Decision:** Initial corpus consists of three source families: OWASP Top 10:2025, NIST Cybersecurity Framework 2.0, and CISA Cross-Sector Cybersecurity Performance Goals v2.0.
+- **Rationale:** All three are freely accessible, authoritative, complementary in coverage (web-app vulnerabilities, risk framework, performance goals), and suitable for defensive QA.
+- **Constraints:** Additional corpus families require explicit human approval.
 
 ### D-P03 — Embedding model
 
@@ -103,3 +105,65 @@ Constraints: <any limits or conditions>
 
 - **Phase:** 9 (PHASE_9_DECISION)
 - **Status:** PENDING
+
+---
+
+## Phase 1 Decisions
+
+### D-004 — Project name is ContextForge
+
+- **Date:** 2026-09-28
+- **Phase:** 1
+- **Status:** APPROVED
+- **Decision:** Official project name is **ContextForge**. All new source code, documentation, and configuration use `contextforge` (package) / `ContextForge` (display name). Planning documents originally written as DomainAdapt retain their internal naming where it does not affect architecture; technical architecture is unchanged.
+
+### D-005 — Domain: cybersecurity knowledge and defensive security guidance
+
+- **Date:** 2026-09-28
+- **Phase:** 1
+- **Status:** APPROVED
+- **Decision:** ContextForge answers questions grounded in authoritative defensive cybersecurity documentation.
+- **Rationale:** Human decision. Bounded domain with clear in/out-of-scope distinction.
+- **Constraints:** Offensive security operations (malware, exploit generation, credential attacks, phishing automation, autonomous pentesting) are explicitly out of scope.
+
+### D-006 — Primary QA task: evidence-grounded domain-specific question answering
+
+- **Date:** 2026-09-28
+- **Phase:** 1
+- **Status:** APPROVED
+- **Decision:** The primary task is single-turn, evidence-grounded QA. Questions must be answerable from the approved corpus. The system must acknowledge insufficient evidence rather than fabricate answers.
+- **Rationale:** Aligns with the research goal of comparing base, RAG, and fine-tuned paths on a controlled, verifiable task.
+
+### D-007 — Intended users
+
+- **Date:** 2026-09-28
+- **Phase:** 1
+- **Status:** APPROVED
+- **Decision:** Primary intended users are: students learning cybersecurity, developers seeking secure-coding guidance, junior security professionals, and teams searching for authoritative defensive cybersecurity answers.
+
+### D-008 — Initial corpus: OWASP Top 10:2025, NIST CSF 2.0, CISA CPGs v2.0
+
+- **Date:** 2026-09-28
+- **Phase:** 1
+- **Status:** APPROVED
+- **Decision:** The three approved source families are recorded in `data/manifests/corpus_manifest.csv`.
+- **Verified metadata:**
+  - OWASP Top 10:2025: published November 2025; primary access at https://owasp.org/Top10; CC BY-SA 4.0
+  - NIST CSF 2.0: published 2024-02-26; DOI https://doi.org/10.6028/NIST.CSWP.29; PDF https://nvlpubs.nist.gov/nistpubs/CSWP/NIST.CSWP.29.pdf; public domain
+  - CISA CPGs v2.0: published 2025-12-11; https://www.cisa.gov/cross-sector-cybersecurity-performance-goals; direct PDF https://www.cisa.gov/sites/default/files/2025-12/cpg-report-2.0.pdf; U.S. Government public domain
+- **Pending at download time:** `retrieved_at`, `local_path`, `checksum` for each document.
+
+### D-009 — QA question category taxonomy (7 categories)
+
+- **Date:** 2026-09-28
+- **Phase:** 1
+- **Status:** APPROVED
+- **Decision:** Seven categories: `factual_definition`, `recommendation`, `control_guidance`, `framework_mapping`, `risk_explanation`, `mitigation`, `procedural_guidance`. Defined in `docs/DATASET_CONTRACT.md §2`.
+
+### D-010 — Dataset split rules and leakage-prevention protocol
+
+- **Date:** 2026-09-28
+- **Phase:** 1
+- **Status:** APPROVED
+- **Decision:** Three-way split (train / validation / test). Test set is frozen before final evaluation and must never be used for tuning. Full rules in `docs/DATASET_CONTRACT.md §4–5`.
+- **Key rule:** Document corpus overlap across splits is acceptable; QA-example identity leakage across the test boundary is not.
