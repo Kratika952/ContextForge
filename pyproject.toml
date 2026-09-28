@@ -1,0 +1,42 @@
+# ContextForge — pyproject.toml
+# Python ≥ 3.10 required (3.13 confirmed available).
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "contextforge"
+version = "0.1.0"
+description = "Domain-specific QA system comparing Base LLM, RAG, and fine-tuned LLM."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+# ── Core dependencies (Phase 0 — only what is needed NOW) ──────────────────
+# Later phases will extend this list after the human approves each addition.
+dependencies = [
+    # No runtime dependencies in Phase 0 — the package is a skeleton.
+    # Phase 3+ will add: torch, transformers, sentence-transformers, faiss-cpu, peft, trl,
+    #                    datasets, pandas, pymupdf, fastapi, uvicorn, streamlit,
+    #                    scikit-learn, matplotlib, python-dotenv, pyyaml
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v"
+
+[tool.setuptools.package-dir]
+"" = "src"

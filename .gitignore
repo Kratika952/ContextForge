@@ -1,0 +1,92 @@
+# ───────────────────────────────────────────────
+# ContextForge — .gitignore
+# ───────────────────────────────────────────────
+
+# ── Python ──────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+
+# ── Virtual environments ─────────────────────────
+.venv/
+venv/
+env/
+.env/
+ENV/
+
+# ── Secrets / credentials ────────────────────────
+.env
+*.env
+secrets.yaml
+secrets.json
+
+# ── Jupyter / IPython ───────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── pytest / coverage ───────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+*.coveragerc
+
+# ── Type checking ────────────────────────────────
+.mypy_cache/
+.dmypy.json
+
+# ── Model caches (Hugging Face, Torch) ──────────
+.cache/
+huggingface/
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.ckpt
+
+# ── FAISS indexes ────────────────────────────────
+artifacts/faiss/
+
+# ── LoRA / QLoRA adapters ────────────────────────
+artifacts/adapters/
+
+# ── Evaluation artifacts (generated) ────────────
+artifacts/evaluation/
+artifacts/plots/
+
+# ── Data — raw / private corpora ─────────────────
+data/raw/
+data/processed/
+
+# ── SQLite runtime databases ─────────────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ── OS artifacts ─────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE ──────────────────────────────────────────
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ── Logs ─────────────────────────────────────────
+logs/
+*.log
+
+# ── Temporary files ──────────────────────────────
+tmp/
+temp/
+*.tmp
+*.bak
