@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
 
 # ── Exceptions ───────────────────────────────────────────────────────────────
@@ -56,6 +56,22 @@ class IncompatibleIndexError(RetrievalError):
 
 class EmbeddingError(RetrievalError):
     """Raised when text embedding fails."""
+
+
+class LLMError(ContextForgeError):
+    """Base exception for LLM loading and generation failures."""
+
+
+class ModelLoadError(LLMError):
+    """Raised when model or tokenizer loading fails."""
+
+
+class GenerationError(LLMError):
+    """Raised when text generation fails."""
+
+
+class InvalidQuestionError(ContextForgeError, ValueError):
+    """Raised when an input question is empty, whitespace-only, or violates length constraints."""
 
 
 # ── Ingestion Data Contracts ──────────────────────────────────────────────────
@@ -164,3 +180,17 @@ class RetrievedChunk:
     rank: int
     source_label: str
     metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class AnswerResult:
+    """Standardized response contract matching Section 6.4 of IMPLEMENTATION_PLAN.md."""
+
+    question: str
+    pipeline: Literal["base", "rag", "finetuned"]
+    answer: str
+    model_id: str
+    latency_ms: float
+    sources: list[RetrievedChunk] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+

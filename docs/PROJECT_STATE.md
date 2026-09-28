@@ -5,7 +5,7 @@
 
 ---
 
-## Current phase: 3 — Chunking, Embeddings, and FAISS
+## Current phase: 4 — Base LLM Pipeline
 
 **Status:** COMPLETE
 
@@ -191,10 +191,110 @@ None.
 
 ---
 
+## Phase 4 — Base LLM Pipeline
+
+**Status:** COMPLETE
+
+### Completed
+
+- [x] Model decision approved and recorded in `docs/DECISIONS.md`: `Qwen/Qwen2.5-1.5B-Instruct` as single base causal language model (Apache-2.0, ~1.54B parameters).
+- [x] Configuration created (`config/model.yaml`): deterministic generation (`do_sample: false`, temperature/top_p omitted), max_new_tokens=256, prompt=base_v1.
+- [x] Common contracts updated (`src/contextforge/common/types.py`):
+  - `AnswerResult` (`question`, `pipeline`, `answer`, `model_id`, `latency_ms`, `sources`, `metadata`).
+  - Error hierarchy: `LLMError`, `ModelLoadError`, `GenerationError`, `InvalidQuestionError`.
+- [x] Centralized, versioned prompt template created (`src/contextforge/llm/prompts.py`):
+  - `base_v1`: concise defensive cybersecurity persona.
+  - Zero retrieval placeholders; no false claims of external document access.
+  - Structured chat template message formatting (`system` + `user`).
+- [x] Model loader implemented (`src/contextforge/llm/base_model.py`):
+  - `BaseModelLoader` with automatic device selection (CUDA or CPU) and dtype resolution (`torch.bfloat16` on CPU).
+  - Puts model in eval mode, loads once per process, exposes runtime diagnostic metadata.
+- [x] Text generation wrapper implemented (`src/contextforge/llm/generation.py`):
+  - `TextGenerator` using official Qwen chat template.
+  - Strips input prompt tokens and decodes generated output tokens only.
+  - Enforces deterministic greedy decoding (`do_sample=False`).
+  - Captures exact input and output token counts.
+- [x] Application pipeline implemented (`src/contextforge/pipelines/base.py`):
+  - `BasePipeline` returning standard `AnswerResult` with `pipeline="base"` and `sources=[]`.
+  - Input validation rejecting empty, whitespace-only, or oversized questions with explicit errors.
+  - Measures wall-clock generation latency excluding cold model load time.
+  - Zero FAISS, retrieval, or SQLite chunk dependencies.
+- [x] CLI inference runner implemented (`scripts/run_base.py`):
+  - Structured output displaying pipeline, model, device, latency, token counts, and generated answer.
+- [x] Representative smoke questions executed (`scripts/evaluate_base_smoke.py`):
+  1. What is broken access control? (Latency: 32.0s, In: 54 tok, Out: 110 tok)
+  2. What is the purpose of multi-factor authentication? (Latency: 56.2s, In: 57 tok, Out: 256 tok)
+  3. What is the Govern function in a cybersecurity framework? (Latency: 49.6s, In: 58 tok, Out: 195 tok)
+  4. How can SQL injection risk be reduced? (Latency: 70.0s, In: 56 tok, Out: 256 tok)
+  5. What is the difference between authentication and authorization? (Latency: 38.9s, In: 57 tok, Out: 103 tok)
+- [x] Baseline limitation demonstrated:
+  - Question: "What are the official ten vulnerability categories defined in OWASP Top 10:2025?"
+  - Result: Base model hallucinates/recalls outdated 2017/2021 categories (XXE, Sensitive Data Exposure), missing 2025 additions (`Software Supply Chain Failures`, `Mishandling of Exceptional Conditions`). Concretely proves why RAG is necessary for accurate, current domain QA.
+- [x] Tests:
+  - Unit tests: 59 passed with mocked model/tokenizer (runs fast, no heavy downloads in ordinary test pass).
+  - Integration test: `test_real_qwen_base_pipeline_inference` passed (verifies real Qwen2.5 loading, chat template, and generation).
+  - Total test suite: 60/60 passed.
+
+---
+
+## Active task
+
+Phase 4 complete — awaiting human approval to begin Phase 5.
+
+---
+
+## Blockers
+
+None.
+
+---
+
+## Last verified commands
+
+```text
+.venv\Scripts\python.exe scripts/run_base.py "What is broken access control?"
+  -> Pipeline: base, Latency: 26340.5 ms, Input tokens: 54, Output tokens: 110
+
+.venv\Scripts\python.exe scripts/evaluate_base_smoke.py
+  -> All 6 smoke questions answered and saved to artifacts/base_smoke_results.json
+
+.venv\Scripts\python.exe -m pytest -v
+  -> 60 passed in 100.28s
+```
+
+---
+
+## Phase 4 acceptance criteria
+
+| Criterion | Status |
+|---|---|
+| Approved Qwen2.5-1.5B-Instruct model used | VERIFIED |
+| Tokenizer and model load in bfloat16 on CPU | VERIFIED |
+| Model placed in eval mode | VERIFIED |
+| Standard Qwen chat template used via tokenizer | VERIFIED |
+| Deterministic greedy generation configured (`do_sample=False`) | VERIFIED |
+| Output contains generated answer only (input prompt stripped) | VERIFIED |
+| Input and output token counts captured in metadata | VERIFIED |
+| Generation latency captured in ms | VERIFIED |
+| `BasePipeline` returns standardized `AnswerResult` | VERIFIED |
+| `pipeline == 'base'` and `sources == []` | VERIFIED |
+| Input question validation rejects empty/whitespace input | VERIFIED |
+| Base path has zero FAISS or retrieval dependency | VERIFIED |
+| CLI `scripts/run_base.py` functional with structured output | VERIFIED |
+| All previous Phase 0-3 tests still pass | VERIFIED |
+| Phase 4 unit tests pass with mocked model boundary | VERIFIED |
+| Real model integration test verified with live Qwen2.5 model | VERIFIED |
+| Representative smoke questions executed and recorded | VERIFIED |
+| Baseline limitation demonstrated on corpus-specific question | VERIFIED |
+| No model weights tracked in Git repository | VERIFIED |
+| Zero Phase 5 RAG components introduced | VERIFIED |
+
+---
+
 ## Next allowed task
 
-> **Phase 4 — Base LLM Pipeline**
+> **Phase 5 — RAG Pipeline**
 >
-> Gate: Human confirms Phase 3 completion and approves start of Phase 4.
-> Tasks: Select small open instruct model, implement base prompt and BasePipeline, measure wall-clock latency, return AnswerResult.
-> Do NOT begin Phase 4 without explicit approval.
+> Gate: Human confirms Phase 4 completion and approves start of Phase 5.
+> Tasks: Implement `RagPipeline`, integrate `DenseRetriever` with `Qwen2.5-1.5B-Instruct`, format retrieved context, implement versioned RAG prompt (`rag_v1`), format source labels, handle insufficient evidence.
+> Do NOT begin Phase 5 without explicit approval.

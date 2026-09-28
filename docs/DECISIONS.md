@@ -78,8 +78,9 @@ Constraints: <any limits or conditions>
 ### D-P04 — Base LLM
 
 - **Phase:** 4 (PHASE_4_DECISION)
-- **Status:** PENDING
-- **What is needed:** Select a small open instruction model compatible with Transformers, LoRA/QLoRA, and available hardware.
+- **Status:** APPROVED (2026-09-28)
+- **Decision:** `Qwen/Qwen2.5-1.5B-Instruct` as the single base model for ContextForge (Base, RAG, and subsequent PEFT/LoRA/QLoRA adaptation).
+- **Rationale:** Approved by human project owner. Instruction-tuned causal LLM, ~1.54B parameters, manageable on local CPU/cloud hardware, native Hugging Face Transformers support, Apache-2.0 license.
 
 ### D-P05 — Chunking parameters
 
@@ -223,4 +224,29 @@ Constraints: <any limits or conditions>
 - **Status:** APPROVED
 - **Decision:** Support the official BGE query instruction prefix (`"Represent this sentence for searching relevant passages: "`) via `config/rag.yaml` (`query_instruction_enabled`), with passages strictly never receiving instructions.
 - **Rationale:** Tested in EXP-002. Preserves the option for generic queries while allowing domain-specific technical queries to disable the prefix for higher Recall@1 (86.7% vs 73.3%).
+
+---
+
+## Phase 4 Decisions
+
+### D-017 — Base LLM selection: Qwen/Qwen2.5-1.5B-Instruct
+- **Date:** 2026-09-28
+- **Phase:** 4
+- **Status:** APPROVED
+- **Decision:** Use `Qwen/Qwen2.5-1.5B-Instruct` as the single base causal language model across ContextForge (Base baseline, Phase 5 RAG generation, and Phase 7/8 LoRA fine-tuning).
+- **Rationale:** Instruction-tuned open model, 1.54B parameters, native Transformers support, Apache-2.0 license, manageable locally in bfloat16 on CPU/GPU without aggressive quantization.
+
+### D-018 — Deterministic baseline generation controls
+- **Date:** 2026-09-28
+- **Phase:** 4
+- **Status:** APPROVED
+- **Decision:** The baseline inference path enforces `do_sample: false` (greedy decoding), omitting temperature and top_p arguments.
+- **Rationale:** Ensures that downstream comparisons between Base, RAG, and fine-tuned pipelines reflect genuine architectural differences rather than stochastic sampling noise.
+
+### D-019 — Centralized baseline prompt versioning without corpus claims
+- **Date:** 2026-09-28
+- **Phase:** 4
+- **Status:** APPROVED
+- **Decision:** The base prompt (`base_v1`) defines a concise defensive cybersecurity persona and explicitly avoids claiming access to external documents or naming corpus frameworks unless requested by the user.
+- **Rationale:** Prevents prompt-induced hallucination of document access in the baseline path where no retrieval context is provided.
 

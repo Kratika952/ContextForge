@@ -1,6 +1,7 @@
 """Common utilities, types, and configuration for ContextForge."""
 
 from contextforge.common.types import (
+    AnswerResult,
     Chunk,
     ContextForgeError,
     Document,
@@ -11,9 +12,13 @@ from contextforge.common.types import (
     ExtractedDocument,
     ExtractedPage,
     ExtractedUnit,
+    GenerationError,
     IncompatibleIndexError,
     IndexNotFoundError,
     IngestionError,
+    InvalidQuestionError,
+    LLMError,
+    ModelLoadError,
     NoExtractableTextError,
     RetrievedChunk,
     RetrievalError,
@@ -21,6 +26,7 @@ from contextforge.common.types import (
 )
 
 __all__ = [
+    "AnswerResult",
     "Chunk",
     "ContextForgeError",
     "Document",
@@ -31,9 +37,13 @@ __all__ = [
     "ExtractedDocument",
     "ExtractedPage",
     "ExtractedUnit",
+    "GenerationError",
     "IncompatibleIndexError",
     "IndexNotFoundError",
     "IngestionError",
+    "InvalidQuestionError",
+    "LLMError",
+    "ModelLoadError",
     "NoExtractableTextError",
     "RetrievedChunk",
     "RetrievalError",

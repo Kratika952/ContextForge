@@ -14,9 +14,22 @@ latency, and resource requirements?
 
 ## Project Status
 
-**Phase 0 — Repository, Environment, and Guardrails** (active)
+**Phase 4 — Base LLM Pipeline** (complete, awaiting Phase 5 approval)
 
 See [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) for the current execution state.
+
+---
+
+## Baseline LLM Inference
+
+- **Base Model:** `Qwen/Qwen2.5-1.5B-Instruct` (Apache-2.0, ~1.54B parameters)
+- **Prompt Version:** `base_v1` (concise defensive cybersecurity persona, zero document access claims)
+- **Generation Strategy:** Deterministic greedy decoding (`do_sample: false`, temperature/top_p omitted)
+- **Runtime Strategy:** Auto device placement (CUDA or CPU), `torch.bfloat16` precision, eval mode, loaded once per service/process.
+- **Inference CLI:**
+  ```bash
+  python scripts/run_base.py "What is broken access control?"
+  ```
 
 ---
 
@@ -26,9 +39,9 @@ See [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) for the current execution s
 |---|---|
 | Language | Python ≥ 3.10 |
 | ML / DL | PyTorch |
-| LLM runtime | Hugging Face Transformers |
-| Embeddings | Sentence Transformers |
-| Vector search | FAISS |
+| LLM runtime | Hugging Face Transformers (`Qwen/Qwen2.5-1.5B-Instruct`) |
+| Embeddings | Sentence Transformers (`BAAI/bge-small-en-v1.5`) |
+| Vector search | FAISS (`IndexFlatIP`) |
 | Fine-tuning | PEFT + TRL + LoRA/QLoRA |
 | Quantization | bitsandbytes (where supported) |
 | Dataset utilities | Hugging Face Datasets + Pandas |
@@ -60,12 +73,22 @@ source .venv/bin/activate
 # 3. Install the package in editable mode (dev extras)
 pip install -e ".[dev]"
 
-# 4. Copy and populate the environment file
-cp .env.example .env
-# Edit .env — see comments inside for required variables
+# 4. Ingest authoritative corpus
+python scripts/ingest.py data/raw/nist-csf-2.0.pdf
+python scripts/ingest.py data/raw/cisa-cpg-2.0.pdf
+python scripts/ingest.py data/raw/owasp-top10-2025
 
-# 5. Run the smoke tests
-pytest
+# 5. Build FAISS dense retrieval indices
+python scripts/build_index.py --profile medium
+
+# 6. Run semantic search
+python scripts/search.py "What is the NIST CSF Govern function?"
+
+# 7. Run baseline LLM inference
+python scripts/run_base.py "What is broken access control?"
+
+# 8. Run test suite
+pytest -v
 ```
 
 ---
@@ -74,17 +97,21 @@ pytest
 
 ```
 ContextForge/
-├── docs/                  # Implementation plan, decisions, state
-├── config/                # project.yaml and future phase configs
+├── docs/                  # Implementation plan, decisions, state, experiment log
+├── config/                # project.yaml, rag.yaml, model.yaml
 ├── src/contextforge/      # Python package (src layout)
+│   ├── common/            # Shared types, config, error hierarchy
+│   ├── ingestion/         # PDF, Markdown loaders, text cleaner, token-aware chunker
+│   ├── storage/           # SQLite schema, db connection manager, repositories
+│   ├── retrieval/         # BGE embedder, FAISS vector store, dense retriever
+│   ├── llm/               # Model loader, prompts, generation wrapper
+│   └── pipelines/         # BasePipeline (and future RagPipeline)
 ├── tests/                 # pytest test suite
-│   ├── unit/
-│   ├── integration/
-│   └── fixtures/
-├── data/                  # Corpora and QA splits (mostly gitignored)
-├── artifacts/             # FAISS indexes, adapters, plots (gitignored)
-├── scripts/               # CLI entry points (populated in later phases)
-└── frontend/              # Streamlit app (Phase 10+)
+│   ├── unit/              # Isolated unit tests with mocked models
+│   └── integration/       # End-to-end retrieval and live LLM tests
+├── data/                  # Corpora, manifests, and QA splits
+├── artifacts/             # FAISS indexes, adapters, evaluation logs (gitignored)
+└── scripts/               # CLI entry points (ingest, build_index, search, run_base)
 ```
 
 ---
@@ -107,8 +134,8 @@ ContextForge/
 | 0 | Repository, Environment, Guardrails | **COMPLETE** |
 | 1 | Domain and Dataset Contract | **COMPLETE** |
 | 2 | Document Ingestion | **COMPLETE** |
-| 3 | Chunking, Embeddings, FAISS | PLANNED |
-| 4 | Base LLM Pipeline | PLANNED |
+| 3 | Chunking, Embeddings, FAISS | **COMPLETE** |
+| 4 | Base LLM Pipeline | **COMPLETE** |
 | 5 | RAG Pipeline | PLANNED |
 | 6 | Evaluation Harness v1 | PLANNED |
 | 7 | Fine-Tuning Dataset Preparation | PLANNED |

@@ -1,0 +1,22 @@
+# ContextForge — Base LLM Model and Generation Configuration
+# ──────────────────────────────────────────────────────────────────────────────
+# Defines the canonical open instruct LLM used for baseline inference,
+# future RAG generation, and eventual LoRA/QLoRA adaptation.
+# ──────────────────────────────────────────────────────────────────────────────
+
+model:
+  id: "Qwen/Qwen2.5-1.5B-Instruct"
+  trust_remote_code: false
+
+generation:
+  max_new_tokens: 256
+  do_sample: false
+  temperature: null
+  top_p: null
+
+runtime:
+  device: "auto"  # "auto" | "cuda" | "cpu"
+  dtype: "auto"   # "auto" | "float32" | "bfloat16" | "float16"
+
+prompt:
+  version: "base_v1"
