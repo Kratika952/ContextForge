@@ -5,7 +5,7 @@
 
 ---
 
-## Current phase: 1 — Domain and Dataset Contract
+## Current phase: 2 — Document Ingestion
 
 **Status:** COMPLETE
 
@@ -21,102 +21,128 @@ All Phase 0 acceptance criteria passed and verified. Full record in commit histo
 
 ## Phase 1 — Domain and Dataset Contract
 
+**Status:** COMPLETE (see git commit ba43948)
+
+All Phase 1 acceptance criteria passed and verified. Full record in commit history.
+
+---
+
+## Phase 2 — Document Ingestion
+
 **Status:** COMPLETE
 
 ### Completed
 
-- [x] Human decisions recorded in `docs/DECISIONS.md` (D-004 through D-010; D-P01 and D-P02 promoted from PENDING to APPROVED)
-- [x] `docs/CORPUS_CONTRACT.md` — created (allowed sources, metadata requirements, inclusion/exclusion rules, provenance policy)
-- [x] `data/manifests/corpus_manifest.csv` — created (3 source records; download-time fields PENDING_DOWNLOAD, no fabricated metadata)
-- [x] `docs/DATASET_CONTRACT.md` — created (QA task, 7-category taxonomy, answer quality contract, split rules, leakage-prevention rules, QA schemas, research questions)
-- [x] Source URLs verified via live web search (not fabricated)
-- [x] Existing pytest suite re-run after Phase 1 changes — 4 passed
-
-### Corpus manifest records
-
-| document_id | Title | Status |
-|---|---|---|
-| `owasp-top10-2025` | OWASP Top 10:2025 | PLANNED |
-| `nist-csf-2.0` | NIST Cybersecurity Framework 2.0 | PLANNED |
-| `cisa-cpg-2.0` | CISA Cross-Sector Cybersecurity Performance Goals v2.0 | PLANNED |
-
-### Pending until Phase 2
-
-- `retrieved_at`, `local_path`, `checksum` for all three corpus documents (set at actual download time)
+- [x] Official NIST CSF 2.0 PDF downloaded from primary source (`https://nvlpubs.nist.gov/nistpubs/CSWP/NIST.CSWP.29.pdf`), verified via PyMuPDF (32 pages, 68,335 chars), SHA-256 computed.
+- [x] Official CISA CPG 2.0 PDF downloaded from primary source (`https://www.cisa.gov/sites/default/files/2025-12/CPG_Report_2.0_508c.pdf`), verified via PyMuPDF (36 pages, 95,324 chars), SHA-256 computed.
+- [x] Canonical OWASP Top 10:2025 corpus acquired from official GitHub repository (`OWASP/Top10/2025/docs/en/*.md`, 16 Markdown files), individual SHA-256 hashes computed.
+- [x] OWASP slide deck PDF discarded from canonical corpus role (retaining official Markdown documentation as canonical textual source).
+- [x] Conservative text cleaner implemented (`src/contextforge/ingestion/cleaner.py`):
+  - Preserves punctuation, casing, code blocks, URLs, and cybersecurity tokens (`CVE-2025-...`, `TLS 1.3`, `HTTP/2`, `XSS`, `SQL`, `< >`, `/`, `_`, `-`, `:`).
+  - Normalizes via Unicode NFKC (handles ligatures like fi, fl).
+  - Normalizes CRLF/CR to LF, strips non-printable ASCII control characters.
+- [x] PDF loader implemented (`src/contextforge/ingestion/pdf_loader.py`):
+  - PyMuPDF extraction with page-level provenance (1-indexed page numbers, char counts).
+  - Scanned / image-only / empty PDF detection raising `NoExtractableTextError` (no silent OCR).
+  - Safe file closure via `try...finally: doc.close()`.
+- [x] Markdown loader implemented (`src/contextforge/ingestion/markdown_loader.py`):
+  - Preserves headings and section-level provenance.
+  - Full UTF-8 support.
+- [x] Common types and error hierarchy implemented (`src/contextforge/common/types.py`):
+  - `Document`, `ExtractedUnit`, `ExtractedDocument`.
+  - `DocumentNotFoundError`, `UnsupportedDocumentTypeError`, `DocumentExtractionError`, `NoExtractableTextError`, `DuplicateDocumentError`.
+- [x] SQLite storage layer implemented (`src/contextforge/storage/`):
+  - `schema.sql`: `documents` table with `id`, `title`, `source_path`, `checksum` (UNIQUE), `source_type`, `status`, `created_at`, `metadata_json`.
+  - `db.py`: Connection manager with WAL mode and foreign keys enabled.
+  - `repositories.py`: Parameterized CRUD operations on `documents` table.
+- [x] Ingestion service implemented (`src/contextforge/ingestion/service.py`):
+  - End-to-end pipeline: path validation -> type detection -> SHA-256 -> duplicate check -> extraction -> conservative clean -> SQLite persistence.
+  - Duplicate detection by SHA-256: returns `ALREADY_INGESTED` and skips insert (never creates duplicate rows).
+- [x] Ingestion CLI implemented (`scripts/ingest.py`):
+  - Supports single file and directory ingestion.
+  - Structured output (`Status`, `Document ID`, `Title`, `Source type`, `SHA-256`, `Pages/sections`, `Characters`, `Database`).
+  - Clean exit codes (0 for success/duplicate skipped, 1 for failure).
+- [x] Real corpus ingested into `data/contextforge.db`:
+  - NIST CSF 2.0 (1 PDF document, 32 pages)
+  - CISA CPG 2.0 (1 PDF document, 36 pages)
+  - OWASP Top 10:2025 (16 Markdown documents, 151 sections)
+  - Total in DB: 18 documents.
+- [x] Idempotency / duplicate prevention verified on real corpus (re-running ingestion outputs `ALREADY_INGESTED`, DB count remains 18).
+- [x] Test suite: 32 tests passing (unit tests for cleaner, PDF loader, Markdown loader, hashing, storage, service, errors; integration test for CLI).
+- [x] Manifest updated (`data/manifests/corpus_manifest.csv`) with 18 records, real dates, real paths, real SHA-256 hashes, zero fabricated data.
+- [x] Architectural decisions recorded in `docs/DECISIONS.md` (D-011 through D-014).
 
 ---
 
 ## Active task
 
-Phase 1 complete — awaiting human approval to begin Phase 2.
+Phase 2 complete — awaiting human approval to begin Phase 3.
 
 ---
 
 ## Blockers
 
-None for Phase 1.
-
-**Pending human decisions before Phase 2 can start:**
-
-- None currently known. Phase 2 (Document Ingestion) requires downloading the 3 approved corpus documents. Confirm download is permitted.
+None.
 
 ---
 
 ## Last verified commands
 
-```
-git status
-  -> nothing to commit, working tree clean (before Phase 1 work began)
+```text
+.venv\Scripts\python.exe -m pytest -v
+  -> 32 passed in 2.28s
 
-.venv\Scripts\python.exe -m pytest tests/ -v
-  -> 4 passed in 0.10s (run after Phase 1 document creation)
-     tests/unit/test_smoke.py::test_package_importable PASSED
-     tests/unit/test_smoke.py::test_version_string_present PASSED
-     tests/unit/test_smoke.py::test_no_ml_imports_at_phase_0 PASSED
-     tests/unit/test_smoke.py::test_package_in_src_layout PASSED
+.venv\Scripts\python.exe scripts/ingest.py data/raw/nist-csf-2.0.pdf
+  -> Status: INGESTED (32 pages, 68335 chars)
 
-git commit (Phase 1)
-  -> see final commit hash in this file after commit
+.venv\Scripts\python.exe scripts/ingest.py data/raw/nist-csf-2.0.pdf
+  -> Status: ALREADY_INGESTED (skipped, DB count unchanged)
+
+.venv\Scripts\python.exe scripts/ingest.py data/raw/cisa-cpg-2.0.pdf
+  -> Status: INGESTED (36 pages, 95324 chars)
+
+.venv\Scripts\python.exe scripts/ingest.py data/raw/owasp-top10-2025
+  -> Ingestion batch complete: 16 newly ingested, 0 duplicate(s) skipped.
+
+.venv\Scripts\python.exe scripts/ingest.py data/raw/owasp-top10-2025
+  -> Ingestion batch complete: 0 newly ingested, 16 duplicate(s) skipped.
+
+.venv\Scripts\python.exe -c "import sqlite3; conn = sqlite3.connect('data/contextforge.db'); print(conn.execute('SELECT COUNT(*) FROM documents').fetchone()[0])"
+  -> 18
 ```
 
 ---
 
 ## Known issues / limitations
 
-- Python 3.13 is the runtime; all future dependencies must be verified for 3.13 compatibility before adding them to `pyproject.toml`.
-- `bitsandbytes` may not support Python 3.13 on Windows — must be verified at Phase 4/8 when quantisation is needed.
-- `build-backend` is correctly set to `setuptools.build_meta`.
-- OWASP Top 10:2025 is primarily distributed as HTML, not a direct PDF download; the PDF acquisition method must be confirmed at Phase 2 download time (print-to-PDF from official site or GitHub release PDF).
-- The exact NIST PDF URL (`https://nvlpubs.nist.gov/nistpubs/CSWP/NIST.CSWP.29.pdf`) and CISA PDF URL (`https://www.cisa.gov/sites/default/files/2025-12/cpg-report-2.0.pdf`) must be confirmed live at download time — URLs verified via web search but not yet fetched.
+- No OCR dependency installed; scanned PDFs raise `NoExtractableTextError` by design.
+- Python 3.13 runtime remains verified for PyMuPDF and SQLite.
 
 ---
 
-## Phase 1 acceptance criteria
+## Phase 2 acceptance criteria
 
 | Criterion | Status |
 |---|---|
-| Domain explicitly recorded | VERIFIED |
-| Approved corpus sources explicitly recorded | VERIFIED |
-| Intended users and scope documented | VERIFIED |
-| Corpus contract exists (`docs/CORPUS_CONTRACT.md`) | VERIFIED |
-| Corpus manifest schema exists (`data/manifests/corpus_manifest.csv`) | VERIFIED |
-| Initial source records exist without fabricated metadata | VERIFIED |
-| QA task and categories defined | VERIFIED |
-| Answer-quality contract defined | VERIFIED |
-| Train/validation/test rules defined | VERIFIED |
-| Leakage-prevention rules defined | VERIFIED |
-| QA dataset schemas defined | VERIFIED |
-| Inclusion/exclusion rules defined | VERIFIED |
-| Research questions documented | VERIFIED |
-| Existing tests still pass (4/4) | VERIFIED |
-| Repository clean after final commit | VERIFIED |
+| Text can be extracted from normal text PDF (PyMuPDF) | VERIFIED |
+| Page/section provenance survives extraction | VERIFIED |
+| Duplicate file detected via SHA-256 and skipped | VERIFIED |
+| Missing/corrupt file fails with clear explicit error | VERIFIED |
+| No OCR dependency silently introduced | VERIFIED |
+| Conservative text cleaning preserves technical tokens | VERIFIED |
+| Markdown loader preserves headings and UTF-8 | VERIFIED |
+| SQLite documents table populated with parameterized queries | VERIFIED |
+| CLI `scripts/ingest.py` functional with structured output | VERIFIED |
+| Unit and integration tests pass (32/32) | VERIFIED |
+| Corpus manifest updated with true hashes and paths | VERIFIED |
+| Zero Phase 3 components introduced | VERIFIED |
 
 ---
 
 ## Next allowed task
 
-> **Phase 2 — Document Ingestion**
+> **Phase 3 — Chunking, Embeddings, and FAISS**
 >
-> Gate: Human must confirm that downloading the 3 approved corpus documents is permitted.
-> Tasks: Download PDFs, compute SHA-256 checksums, update manifest, implement PDF extraction with PyMuPDF.
-> Do not begin Phase 2 until human approves.
+> Gate: Human confirms Phase 2 completion and approves start of Phase 3.
+> Tasks: Experiment with chunk size / overlap variants, integrate Sentence Transformers, build FAISS index.
+> Do NOT begin Phase 3 without explicit approval.

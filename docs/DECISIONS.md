@@ -167,3 +167,40 @@ Constraints: <any limits or conditions>
 - **Status:** APPROVED
 - **Decision:** Three-way split (train / validation / test). Test set is frozen before final evaluation and must never be used for tuning. Full rules in `docs/DATASET_CONTRACT.md §4–5`.
 - **Key rule:** Document corpus overlap across splits is acceptable; QA-example identity leakage across the test boundary is not.
+
+---
+
+## Phase 2 Decisions
+
+### D-011 — Ingestion layer supports PDF and Markdown formats
+
+- **Date:** 2026-09-28
+- **Phase:** 2
+- **Status:** APPROVED
+- **Decision:** The ingestion layer explicitly supports two document formats: PDF (`.pdf`) via PyMuPDF and Markdown (`.md`, `.markdown`) via a dedicated standard-library loader. Generic web crawlers, Word loaders, and HTML spiders are prohibited.
+- **Rationale:** Aligns with the approved primary sources: NIST CSF 2.0 (PDF), CISA CPG 2.0 (PDF), and OWASP Top 10:2025 (official Markdown documentation).
+
+### D-012 — Canonical OWASP Top 10:2025 uses official Markdown documentation
+
+- **Date:** 2026-09-28
+- **Phase:** 2
+- **Status:** APPROVED
+- **Decision:** The canonical OWASP Top 10:2025 corpus consists of the 16 official Markdown documentation files from the official repository (`OWASP/Top10/2025/docs/en/*.md`). The OWASP slide presentation PDF (`2025/Presentations/OWASP Top Ten 2025.pdf`) is not used as the canonical corpus.
+- **Rationale:** The Markdown files contain the complete, authoritative textual vulnerability definitions, prevention controls, example attack scenarios, and mapped CWEs required for high-fidelity defensive QA.
+
+### D-013 — Duplicate document detection enforced via artifact SHA-256
+
+- **Date:** 2026-09-28
+- **Phase:** 2
+- **Status:** APPROVED
+- **Decision:** Every ingested artifact is fingerprinted with its raw SHA-256 checksum. A UNIQUE constraint on `documents.checksum` in SQLite prevents duplicate records. The service and CLI default to skipping already-ingested artifacts with status `ALREADY_INGESTED`.
+- **Rationale:** Ensures deterministic, idempotent ingestion and prevents duplicate chunks or inflated corpus statistics.
+
+### D-014 — Conservative text cleaning preserving technical tokens
+
+- **Date:** 2026-09-28
+- **Phase:** 2
+- **Status:** APPROVED
+- **Decision:** Text cleaning performs Unicode NFKC normalization, whitespace collapsing, and control-character removal, but strictly preserves case, punctuation, markdown structure, code blocks, and technical cybersecurity identifiers (e.g. CVE identifiers, protocols, SQL syntax, XSS vectors, URLs).
+- **Rationale:** Aggressive cleaning destroys the semantic meaning of code, vulnerability identifiers, and configuration commands essential for cybersecurity QA.
+

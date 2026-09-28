@@ -90,3 +90,4 @@ tmp/
 temp/
 *.tmp
 *.bak
+.docs/

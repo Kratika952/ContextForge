@@ -106,7 +106,7 @@ ContextForge/
 |---|---|---|
 | 0 | Repository, Environment, Guardrails | **COMPLETE** |
 | 1 | Domain and Dataset Contract | **COMPLETE** |
-| 2 | Document Ingestion | PLANNED |
+| 2 | Document Ingestion | **COMPLETE** |
 | 3 | Chunking, Embeddings, FAISS | PLANNED |
 | 4 | Base LLM Pipeline | PLANNED |
 | 5 | RAG Pipeline | PLANNED |
