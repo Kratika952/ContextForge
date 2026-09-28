@@ -38,5 +38,3 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v"
 
-[tool.setuptools.package-dir]
-"" = "src"
