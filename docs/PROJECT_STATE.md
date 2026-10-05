@@ -5,7 +5,7 @@
 
 ---
 
-## Current phase: 4 — Base LLM Pipeline
+## Current phase: 5 — RAG Pipeline
 
 **Status:** COMPLETE
 
@@ -237,9 +237,53 @@ None.
 
 ---
 
+---
+
+## Phase 5 — RAG Pipeline
+
+**Status:** COMPLETE
+
+### Completed
+
+- [x] Configuration updated (`config/rag.yaml`) with `rag:` section (`top_k: 5`, `max_context_tokens: 1500`, `prompt_version: rag_v1`, `query_instruction_enabled: false`).
+- [x] Versioned prompt template created (`src/contextforge/llm/prompts.py`):
+  - `RAG_PROMPT_V1`: concise defensive cybersecurity persona, prompt injection defense clause, `<BEGIN_EVIDENCE>` / `<END_EVIDENCE>` boundary tags, strict refusal instruction when evidence is insufficient, and standardized source citation labels.
+  - Helpers: `get_rag_system_prompt()`, `format_rag_messages()`, and prompt registry entry for `rag_v1`.
+- [x] Context formatter implemented (`src/contextforge/llm/context_formatter.py`):
+  - `ContextFormatter` mapping chunks to `[SOURCE_1]`, `[SOURCE_2]`... labels.
+  - Enforces strict 1500-token budget (drops overflowing chunks without mid-chunk truncation).
+  - Resolves human-readable document titles and section/page references (`resolve_document_source_name`, `resolve_reference_label`).
+- [x] Citation validator implemented (`src/contextforge/llm/citations.py`):
+  - `validate_citations()` and `extract_citation_labels()` to verify cited labels against retrieved chunks.
+  - Detects and reports invalid/hallucinated citation labels in `metadata["invalid_citations"]`.
+- [x] TextGenerator updated (`src/contextforge/llm/generation.py`):
+  - Accepts optional pre-built `messages=` list for structured chat template while maintaining full backwards compatibility for BasePipeline `question=` calls.
+- [x] RAG pipeline implemented (`src/contextforge/pipelines/rag.py`):
+  - `RagPipeline` orchestrating `DenseRetriever` (medium profile, BGE embeddings, FAISS), `ContextFormatter`, `TextGenerator` (greedy deterministic Qwen2.5-1.5B-Instruct), and `validate_citations`.
+  - Returns standardized `AnswerResult` with `pipeline="rag"`, populated `sources`, and detailed telemetry (`retrieval_latency_ms`, `generation_latency_ms`, `citation_labels_used`, `invalid_citations`, etc.).
+- [x] BasePipeline isolation maintained (`src/contextforge/pipelines/base.py`):
+  - Zero retrieval dependencies.
+  - Regression verified by unit test `test_base_pipeline_isolation_regression`.
+- [x] CLI inference runners implemented:
+  - `scripts/run_rag.py`: Single-question RAG inference with citation breakdown and metadata display.
+  - `scripts/compare_base_rag.py`: Side-by-side Base vs RAG comparison script.
+- [x] Minimal Top-K comparison executed (EXP-003: K=3, 5, 8):
+  - Evaluated retrieval and context metrics across domain queries.
+  - Confirmed `top_k = 5` as moderate default balancing context coverage and token budget.
+- [x] Real RAG qualitative verification executed on live Qwen model:
+  - OWASP Top 10:2025 taxonomy query: Grounded answer citing official categories from retrieved evidence.
+  - NIST CSF 2.0 Govern function query: Accurately explains Govern function citing NIST sources.
+  - CISA CPG 2.0 query: Accurately explains CISA goals citing CISA source evidence.
+  - Unsupported domain query ("best recipe for chocolate cake"): Model correctly refuses and states insufficient evidence based on prompt constraints.
+- [x] Tests:
+  - Unit tests: 70 passed (includes 15 Phase 5 unit tests for context formatter, citations, and rag pipeline).
+  - Integration test: `test_real_rag_pipeline_end_to_end_inference` passed in live environment (83.82s).
+
+---
+
 ## Active task
 
-Phase 4 complete — awaiting human approval to begin Phase 5.
+Phase 5 complete — awaiting human approval to begin Phase 6.
 
 ---
 
@@ -252,49 +296,46 @@ None.
 ## Last verified commands
 
 ```text
-.venv\Scripts\python.exe scripts/run_base.py "What is broken access control?"
-  -> Pipeline: base, Latency: 26340.5 ms, Input tokens: 54, Output tokens: 110
+.venv\Scripts\python.exe scripts/run_rag.py "What is broken access control?"
+  -> Pipeline: rag, Model: Qwen/Qwen2.5-1.5B-Instruct, Retrieved: 5 chunks, Context tokens: 1290
 
-.venv\Scripts\python.exe scripts/evaluate_base_smoke.py
-  -> All 6 smoke questions answered and saved to artifacts/base_smoke_results.json
+.venv\Scripts\python.exe scripts/evaluate_rag_phase5.py
+  -> Top-K comparison (K=3, 5, 8) + 4 real RAG verification queries completed and saved to artifacts/rag_phase5_results.json
 
-.venv\Scripts\python.exe -m pytest -v
-  -> 60 passed in 100.28s
+.venv\Scripts\python.exe -m pytest tests/integration/test_rag_integration.py -v -m integration
+  -> 1 passed in 83.82s
+
+.venv\Scripts\python.exe -m pytest -v --ignore=tests/integration --tb=short
+  -> 70 passed in 13.66s
 ```
 
 ---
 
-## Phase 4 acceptance criteria
+## Phase 5 acceptance criteria
 
 | Criterion | Status |
 |---|---|
-| Approved Qwen2.5-1.5B-Instruct model used | VERIFIED |
-| Tokenizer and model load in bfloat16 on CPU | VERIFIED |
-| Model placed in eval mode | VERIFIED |
-| Standard Qwen chat template used via tokenizer | VERIFIED |
-| Deterministic greedy generation configured (`do_sample=False`) | VERIFIED |
-| Output contains generated answer only (input prompt stripped) | VERIFIED |
-| Input and output token counts captured in metadata | VERIFIED |
-| Generation latency captured in ms | VERIFIED |
-| `BasePipeline` returns standardized `AnswerResult` | VERIFIED |
-| `pipeline == 'base'` and `sources == []` | VERIFIED |
-| Input question validation rejects empty/whitespace input | VERIFIED |
-| Base path has zero FAISS or retrieval dependency | VERIFIED |
-| CLI `scripts/run_base.py` functional with structured output | VERIFIED |
-| All previous Phase 0-3 tests still pass | VERIFIED |
-| Phase 4 unit tests pass with mocked model boundary | VERIFIED |
-| Real model integration test verified with live Qwen2.5 model | VERIFIED |
-| Representative smoke questions executed and recorded | VERIFIED |
-| Baseline limitation demonstrated on corpus-specific question | VERIFIED |
-| No model weights tracked in Git repository | VERIFIED |
-| Zero Phase 5 RAG components introduced | VERIFIED |
+| Reuses existing DenseRetriever, FAISS index, and BGE embedder without changes | VERIFIED |
+| Reuses existing Qwen2.5-1.5B-Instruct model loader and TextGenerator | VERIFIED |
+| Versioned RAG prompt (`rag_v1`) with system instructions, evidence markers, and injection guard | VERIFIED |
+| Context formatter maps chunks to standardized `[SOURCE_1]`, `[SOURCE_2]` labels with provenance | VERIFIED |
+| Context formatter enforces 1500-token budget without mid-passage truncation | VERIFIED |
+| Citation validator parses labels and flags invalid/hallucinated citations | VERIFIED |
+| `RagPipeline` returns standardized `AnswerResult` with `pipeline == 'rag'` and populated `sources` | VERIFIED |
+| Unsupported domain queries prompt refusal based on evidence grounding constraints | VERIFIED |
+| Top-K engineering comparison (K=3, 5, 8) evaluated and moderate default `top_k=5` recorded | VERIFIED |
+| BasePipeline remains completely retrieval-free (isolation test verified) | VERIFIED |
+| CLI `scripts/run_rag.py` and `scripts/compare_base_rag.py` functional | VERIFIED |
+| Full pytest passes (70 unit tests + 1 live integration test) | VERIFIED |
+| No external orchestration frameworks (LangChain, LlamaIndex) introduced | VERIFIED |
+| No model weights or FAISS generated index files committed to git | VERIFIED |
 
 ---
 
 ## Next allowed task
 
-> **Phase 5 — RAG Pipeline**
+> **Phase 6 — Evaluation Harness v1**
 >
-> Gate: Human confirms Phase 4 completion and approves start of Phase 5.
-> Tasks: Implement `RagPipeline`, integrate `DenseRetriever` with `Qwen2.5-1.5B-Instruct`, format retrieved context, implement versioned RAG prompt (`rag_v1`), format source labels, handle insufficient evidence.
-> Do NOT begin Phase 5 without explicit approval.
+> Gate: Human confirms Phase 5 completion and approves start of Phase 6.
+> Tasks: Implement evaluation harness comparing Base LLM vs RAG across qualitative and quantitative metrics (groundedness, relevance, hallucination rate, latency).
+> Do NOT begin Phase 6 without explicit approval.

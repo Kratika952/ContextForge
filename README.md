@@ -14,7 +14,7 @@ latency, and resource requirements?
 
 ## Project Status
 
-**Phase 4 — Base LLM Pipeline** (complete, awaiting Phase 5 approval)
+**Phase 5 — RAG Pipeline** (COMPLETE, awaiting Phase 6 approval)
 
 See [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) for the current execution state.
 
@@ -29,6 +29,26 @@ See [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) for the current execution s
 - **Inference CLI:**
   ```bash
   python scripts/run_base.py "What is broken access control?"
+  ```
+
+---
+
+## RAG Pipeline Inference
+
+- **Embedding Model:** `BAAI/bge-small-en-v1.5` (384 dimensions, L2-normalized)
+- **Vector Store:** FAISS IndexFlatIP (medium chunk profile: 300 tokens, 50 overlap)
+- **Retriever:** `DenseRetriever` with SQLite chunk metadata
+- **Context Formatter:** Standardized `[SOURCE_1]`, `[SOURCE_2]` labels with 1500-token context budget
+- **Prompt Version:** `rag_v1` with prompt-injection defense and groundedness constraints
+- **Generator:** `Qwen/Qwen2.5-1.5B-Instruct` (greedy, deterministic)
+- **Citation Validator:** Validates cited labels against retrieved chunks; identifies invalid labels
+- **Inference CLI:**
+  ```bash
+  python scripts/run_rag.py "What is broken access control?"
+  ```
+- **Comparison CLI:**
+  ```bash
+  python scripts/compare_base_rag.py "What are the official ten vulnerability categories defined in OWASP Top 10:2025?"
   ```
 
 ---
@@ -136,7 +156,7 @@ ContextForge/
 | 2 | Document Ingestion | **COMPLETE** |
 | 3 | Chunking, Embeddings, FAISS | **COMPLETE** |
 | 4 | Base LLM Pipeline | **COMPLETE** |
-| 5 | RAG Pipeline | PLANNED |
+| 5 | RAG Pipeline | **COMPLETE** |
 | 6 | Evaluation Harness v1 | PLANNED |
 | 7 | Fine-Tuning Dataset Preparation | PLANNED |
 | 8 | QLoRA Fine-Tuning | PLANNED |

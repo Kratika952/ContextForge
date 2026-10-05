@@ -81,14 +81,16 @@ class TextGenerator:
 
     def generate(
         self,
-        question: str,
+        question: str | None = None,
         prompt_version: str = "base_v1",
+        messages: list[dict[str, str]] | None = None,
     ) -> GenerationResult:
-        """Generate response for a cybersecurity question.
+        """Generate response for a cybersecurity question or pre-formatted message list.
 
         Args:
-            question: Cleaned user query.
-            prompt_version: System prompt version.
+            question: Cleaned user query (optional if messages is provided).
+            prompt_version: System prompt version (used if formatting from question).
+            messages: Pre-formatted chat message dictionaries (e.g. from RAG formatter).
 
         Returns:
             GenerationResult containing decoded answer and token counts.
@@ -100,10 +102,14 @@ class TextGenerator:
         tokenizer = self.model_loader.tokenizer
         device = self.model_loader.device
 
-        # 1. Format messages with versioned system prompt
-        messages = format_base_messages(question, prompt_version=prompt_version)
+        # 1. Resolve messages
+        if messages is None:
+            if not question:
+                raise GenerationError("Either 'question' or 'messages' must be provided for generation.")
+            messages = format_base_messages(question, prompt_version=prompt_version)
 
         # 2. Apply official Qwen chat template
+
         try:
             prompt_text = tokenizer.apply_chat_template(
                 messages,

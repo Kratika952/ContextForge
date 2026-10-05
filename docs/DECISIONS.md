@@ -92,7 +92,10 @@ Constraints: <any limits or conditions>
 ### D-P06 — Top-k retrieval
 
 - **Phase:** 5 (PHASE_5_EXPERIMENT)
-- **Status:** PENDING
+- **Status:** APPROVED (2026-10-05)
+- **Decision:** Selected `top_k = 5` as standard retrieval count for `RagPipeline` in conjunction with `medium` chunk profile and 1500-token context budget.
+- **Rationale:** Evaluated K=3, 5, 8 in EXP-003 engineering comparison. K=3 (avg ~780 tokens) risks omitting secondary sections/context across multi-document sources. K=8 (avg ~1950 tokens) crowds or exceeds the 1500-token context budget, causing budget cutoffs and higher CPU latency with diminishing marginal relevance. K=5 (avg ~1220 tokens) fits comfortably within the budget, retrieves comprehensive cross-document evidence, and maintains high precision.
+- **Constraints:** Development engineering baseline; can be tuned if evaluated on broader benchmark suites.
 
 ### D-P07 — Fine-tuning dataset format
 

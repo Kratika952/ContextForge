@@ -135,3 +135,53 @@ Artifact paths:
   - artifacts/faiss/medium
 Notes:
   - Both modes remain supported via `config/rag.yaml` (`query_instruction_enabled: true/false`).
+
+---
+
+### EXP-003 — RAG Top-K Engineering Comparison
+Date: 2026-10-05
+Phase: 5
+Purpose: Controlled development-only engineering comparison of retrieval count (K=3, K=5, K=8) with medium chunk profile (300/50 tokens) and 1500-token context budget on Qwen2.5-1.5B-Instruct. Note: This is a small development engineering decision, not the final benchmark.
+Config:
+  - embedding_model: "BAAI/bge-small-en-v1.5"
+  - chunk_profile: "medium" (300 tokens, 50 overlap)
+  - index_type: "faiss.IndexFlatIP"
+  - query_instruction: false
+  - max_context_tokens: 1500
+  - prompt_version: "rag_v1"
+  - decoding: "greedy deterministic (do_sample=false)"
+Model IDs:
+  - base_llm: "Qwen/Qwen2.5-1.5B-Instruct"
+  - embedding_model: "BAAI/bge-small-en-v1.5"
+Dataset:
+  - split: development qualitative engineering set
+  - questions:
+      - "What is broken access control?"
+      - "What is the Govern function in NIST CSF 2.0?"
+      - "What do the CISA Cross-Sector Cybersecurity Performance Goals provide?"
+Seed: N/A (greedy decoding, exact FAISS search)
+Metrics:
+  - K=3:
+      avg_retrieved_count: 3.0
+      avg_context_tokens: 591.0
+      avg_retrieval_latency_ms: 89.6
+      rep_generation_latency_ms: 84900.3
+      rep_output_tokens: 110
+  - K=5:
+      avg_retrieved_count: 5.0
+      avg_context_tokens: 848.3
+      avg_retrieval_latency_ms: 52.7
+      rep_generation_latency_ms: 116461.2
+      rep_output_tokens: 161
+  - K=8:
+      avg_retrieved_count: 8.0
+      avg_context_tokens: 1108.7
+      avg_retrieval_latency_ms: 41.5
+      rep_generation_latency_ms: 113357.6
+      rep_output_tokens: 154
+Conclusion: Selected K=5 as default engineering baseline in `config/rag.yaml`. K=3 retrieves fewer chunks (~591 tokens) risking omission of secondary sections across multi-document sources. K=8 retrieves ~1109 tokens, which crowds the 1500-token context budget on denser passages (e.g. CISA CPG queries consumed 1416 tokens) with diminishing marginal relevance. K=5 reliably fits well within the budget (~848 tokens avg) while providing comprehensive cross-document context with low retrieval latency (~52.7ms).
+Artifact paths:
+  - artifacts/rag_phase5_results.json
+Notes:
+  - Small qualitative engineering comparison for development configuration. Final formal Base-vs-RAG benchmark will be executed in Phase 6.
+

@@ -60,6 +60,7 @@ artifacts/adapters/
 # ── Evaluation artifacts (generated) ────────────
 artifacts/evaluation/
 artifacts/plots/
+artifacts/*.json
 
 # ── Data — raw / private corpora ─────────────────
 data/raw/
@@ -69,6 +70,8 @@ data/processed/
 *.db
 *.sqlite
 *.sqlite3
+*.db-wal
+*.db-shm
 
 # ── OS artifacts ─────────────────────────────────
 .DS_Store
