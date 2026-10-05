@@ -14,7 +14,7 @@ latency, and resource requirements?
 
 ## Project Status
 
-**Phase 5 — RAG Pipeline** (COMPLETE, awaiting Phase 6 approval)
+**Phase 6 — Evaluation Harness v1** (COMPLETE, awaiting Phase 7 approval)
 
 See [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) for the current execution state.
 
@@ -157,7 +157,7 @@ ContextForge/
 | 3 | Chunking, Embeddings, FAISS | **COMPLETE** |
 | 4 | Base LLM Pipeline | **COMPLETE** |
 | 5 | RAG Pipeline | **COMPLETE** |
-| 6 | Evaluation Harness v1 | PLANNED |
+| 6 | Evaluation Harness v1 | **COMPLETE** |
 | 7 | Fine-Tuning Dataset Preparation | PLANNED |
 | 8 | QLoRA Fine-Tuning | PLANNED |
 | 9 | Full Evaluation (3-way) | PLANNED |

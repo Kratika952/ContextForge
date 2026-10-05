@@ -5,7 +5,7 @@
 
 ---
 
-## Current phase: 5 — RAG Pipeline
+## Current phase: 6 — Evaluation Harness v1: Base vs RAG
 
 **Status:** COMPLETE
 
@@ -281,9 +281,32 @@ None.
 
 ---
 
+## Phase 6 — Evaluation Harness v1: Base vs RAG
+
+**Status:** COMPLETE
+
+### Completed
+
+- [x] Evaluation dataset created (`data/qa/evaluation_v1.jsonl`): 12 curated questions across OWASP Top 10:2025 (4), NIST CSF 2.0 (3), CISA CPG 2.0 (3), and unsupported out-of-corpus queries (2), with factual reference points and expected source categories.
+- [x] Evaluation harness implemented (`src/contextforge/evaluation/`):
+  - `EvaluationQuestion` schema and `load_evaluation_dataset` parser.
+  - Deterministic `calculate_reference_coverage` using rule-based factual criteria verification.
+  - `is_expected_source_retrieved` checking retrieved chunks against expected source authorities.
+  - `is_unsupported_refusal` detecting proper refusal on queries outside the corpus.
+  - `evaluate_question_pair` comparing Base and RAG answers on identical questions.
+  - `aggregate_evaluation_results` computing macro-averages for coverage, latencies, tokens, citation validity, and refusal rates.
+- [x] No LLM-as-a-judge dependency: evaluation is completely deterministic, transparent, and reproducible without external APIs.
+- [x] Single-process shared model loader: Qwen2.5-1.5B-Instruct loaded once into memory to avoid repeated CPU cold starts.
+- [x] Evaluation runner implemented (`scripts/evaluate_base_vs_rag.py`): executes both pipelines on all 12 questions under identical greedy deterministic decoding.
+- [x] Raw results saved to `artifacts/evaluation/base_vs_rag_v1.json` (gitignored).
+- [x] Unit test suite: 8 dedicated evaluation unit tests (`tests/unit/test_evaluation.py`) verifying dataset loading, metric calculations, expected-source matching, refusal checks, and serialization (78 total unit tests passing).
+- [x] Experiment EXP-004 recorded in `docs/EXPERIMENT_LOG.md`.
+
+---
+
 ## Active task
 
-Phase 5 complete — awaiting human approval to begin Phase 6.
+Phase 6 complete — awaiting human approval to begin Phase 7.
 
 ---
 
@@ -296,46 +319,39 @@ None.
 ## Last verified commands
 
 ```text
-.venv\Scripts\python.exe scripts/run_rag.py "What is broken access control?"
-  -> Pipeline: rag, Model: Qwen/Qwen2.5-1.5B-Instruct, Retrieved: 5 chunks, Context tokens: 1290
+.venv\Scripts\python.exe scripts/evaluate_base_vs_rag.py
+  -> Base vs RAG evaluation executed on 12 questions; raw results persisted to artifacts/evaluation/base_vs_rag_v1.json
 
-.venv\Scripts\python.exe scripts/evaluate_rag_phase5.py
-  -> Top-K comparison (K=3, 5, 8) + 4 real RAG verification queries completed and saved to artifacts/rag_phase5_results.json
-
-.venv\Scripts\python.exe -m pytest tests/integration/test_rag_integration.py -v -m integration
-  -> 1 passed in 83.82s
+.venv\Scripts\python.exe -m pytest tests/unit/test_evaluation.py -v
+  -> 8 passed in 0.15s
 
 .venv\Scripts\python.exe -m pytest -v --ignore=tests/integration --tb=short
-  -> 70 passed in 13.66s
+  -> 78 passed in 81.28s
 ```
 
 ---
 
-## Phase 5 acceptance criteria
+## Phase 6 acceptance criteria
 
 | Criterion | Status |
 |---|---|
-| Reuses existing DenseRetriever, FAISS index, and BGE embedder without changes | VERIFIED |
-| Reuses existing Qwen2.5-1.5B-Instruct model loader and TextGenerator | VERIFIED |
-| Versioned RAG prompt (`rag_v1`) with system instructions, evidence markers, and injection guard | VERIFIED |
-| Context formatter maps chunks to standardized `[SOURCE_1]`, `[SOURCE_2]` labels with provenance | VERIFIED |
-| Context formatter enforces 1500-token budget without mid-passage truncation | VERIFIED |
-| Citation validator parses labels and flags invalid/hallucinated citations | VERIFIED |
-| `RagPipeline` returns standardized `AnswerResult` with `pipeline == 'rag'` and populated `sources` | VERIFIED |
-| Unsupported domain queries prompt refusal based on evidence grounding constraints | VERIFIED |
-| Top-K engineering comparison (K=3, 5, 8) evaluated and moderate default `top_k=5` recorded | VERIFIED |
-| BasePipeline remains completely retrieval-free (isolation test verified) | VERIFIED |
-| CLI `scripts/run_rag.py` and `scripts/compare_base_rag.py` functional | VERIFIED |
-| Full pytest passes (70 unit tests + 1 live integration test) | VERIFIED |
-| No external orchestration frameworks (LangChain, LlamaIndex) introduced | VERIFIED |
-| No model weights or FAISS generated index files committed to git | VERIFIED |
+| Development evaluation dataset created with immutable schema | VERIFIED |
+| BasePipeline and RagPipeline evaluated on identical questions and identical model | VERIFIED |
+| Identical deterministic decoding settings (`do_sample=False`, greedy) preserved | VERIFIED |
+| Simple, explainable, reproducible metrics calculated without LLM-as-judge | VERIFIED |
+| Critical OWASP Top 10:2025 question evaluated and documented | VERIFIED |
+| Raw evaluation results persisted to JSON | VERIFIED |
+| Qualitative improvements and failure modes explicitly documented | VERIFIED |
+| Unit tests for evaluation harness pass | VERIFIED |
+| Full pytest test suite passes (78 unit tests) | VERIFIED |
+| No fine-tuning, LoRA, QLoRA, or future phase code introduced | VERIFIED |
 
 ---
 
 ## Next allowed task
 
-> **Phase 6 — Evaluation Harness v1**
+> **Phase 7 — Fine-Tuning Dataset Preparation**
 >
-> Gate: Human confirms Phase 5 completion and approves start of Phase 6.
-> Tasks: Implement evaluation harness comparing Base LLM vs RAG across qualitative and quantitative metrics (groundedness, relevance, hallucination rate, latency).
-> Do NOT begin Phase 6 without explicit approval.
+> Gate: Human confirms Phase 6 completion and approves start of Phase 7.
+> Tasks: Create domain instruction tuning dataset from approved corpus without contaminating test benchmark.
+> Do NOT begin Phase 7 without explicit approval.

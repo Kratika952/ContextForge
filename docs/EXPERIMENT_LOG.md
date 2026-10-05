@@ -185,3 +185,51 @@ Artifact paths:
 Notes:
   - Small qualitative engineering comparison for development configuration. Final formal Base-vs-RAG benchmark will be executed in Phase 6.
 
+---
+
+### EXP-004 — Base vs RAG Evaluation v1
+Date: 2026-10-06
+Phase: 6
+Purpose: Development-only evaluation comparing BasePipeline vs RagPipeline on identical questions, identical model (Qwen/Qwen2.5-1.5B-Instruct), and identical greedy deterministic settings on local CPU. Note: This is a small development evaluation (12 questions), not the final Phase 9 comparison. No statistical significance is claimed.
+Config:
+  - base_llm: "Qwen/Qwen2.5-1.5B-Instruct"
+  - base_prompt: "base_v1"
+  - rag_prompt: "rag_v1"
+  - embedding_model: "BAAI/bge-small-en-v1.5"
+  - chunk_profile: "medium" (300/50 tokens)
+  - top_k: 5
+  - max_context_tokens: 1500
+  - decoding: "greedy deterministic (do_sample=false, max_new_tokens=256)"
+Model IDs:
+  - base_llm: "Qwen/Qwen2.5-1.5B-Instruct"
+  - embedding_model: "BAAI/bge-small-en-v1.5"
+Dataset:
+  - split: development evaluation set v1
+  - path: "data/qa/evaluation_v1.jsonl"
+  - total_questions: 12 (4 OWASP Top 10:2025, 3 NIST CSF 2.0, 3 CISA CPG 2.0, 2 unsupported out-of-corpus)
+Seed: N/A (deterministic exact search, greedy decoding)
+Metrics:
+  - BasePipeline:
+      avg_reference_coverage: 0.3917
+      avg_latency_ms: 50638.6
+      avg_input_tokens: 65.0
+      avg_output_tokens: 185.1
+  - RagPipeline:
+      avg_reference_coverage: 0.5555 (+41.8% relative improvement)
+      avg_total_latency_ms: 145572.9
+      avg_retrieval_latency_ms: 390.9
+      avg_generation_latency_ms: 145049.0
+      avg_input_tokens: 1158.6
+      avg_output_tokens: 108.3 (-41.5% token reduction, concise grounded answers)
+      avg_context_tokens: 1011.0 (safely inside 1500 budget)
+      expected_source_retrieval_rate: 1.0000 (100% on corpus questions)
+      citation_frequency: 0.2500
+      citation_validity: 1.0000 (0 invalid citations)
+      unsupported_refusal_rate: 0.5000
+Conclusion: RAG significantly outperforms Base on domain-specific factual grounding (0.5555 vs 0.3917 reference coverage). In particular, on the critical OWASP Top 10:2025 taxonomy question (eval_01), Base recalled an obsolete 2017 list (0.20 coverage) while RAG correctly identified all 2025 categories from retrieved evidence (1.00 coverage). RAG also yielded 100% expected source retrieval accuracy across all corpus questions. RAG responses are more concise (108 vs 185 output tokens) and grounded, but require higher latency on CPU due to 1000+ context prompt processing (145.6s vs 50.6s).
+Artifact paths:
+  - artifacts/evaluation/base_vs_rag_v1.json
+Notes:
+  - Development evaluation on 12 curated questions. Small dataset, reproducible with scripts/evaluate_base_vs_rag.py.
+
+
