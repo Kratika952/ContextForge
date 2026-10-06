@@ -1,0 +1,111 @@
+{
+  "total": 55,
+  "splits": {
+    "train": {
+      "name": "train",
+      "count": 38,
+      "question_length_words": {
+        "min": 6,
+        "max": 14,
+        "mean": 9.7
+      },
+      "answer_length_words": {
+        "min": 47,
+        "max": 92,
+        "mean": 73.9
+      },
+      "source_families": {
+        "owasp": 19,
+        "nist": 12,
+        "cisa": 7
+      },
+      "categories": {
+        "recommendation": 3,
+        "factual_definition": 15,
+        "mitigation": 7,
+        "procedural_guidance": 3,
+        "control_guidance": 6,
+        "framework_mapping": 3,
+        "risk_explanation": 1
+      }
+    },
+    "validation": {
+      "name": "validation",
+      "count": 8,
+      "question_length_words": {
+        "min": 8,
+        "max": 12,
+        "mean": 10.0
+      },
+      "answer_length_words": {
+        "min": 62,
+        "max": 88,
+        "mean": 72.5
+      },
+      "source_families": {
+        "cisa": 2,
+        "nist": 2,
+        "owasp": 4
+      },
+      "categories": {
+        "recommendation": 4,
+        "factual_definition": 3,
+        "mitigation": 1
+      }
+    },
+    "test": {
+      "name": "test",
+      "count": 9,
+      "question_length_words": {
+        "min": 7,
+        "max": 13,
+        "mean": 10.1
+      },
+      "answer_length_words": {
+        "min": 59,
+        "max": 89,
+        "mean": 72.8
+      },
+      "source_families": {
+        "owasp": 4,
+        "cisa": 4,
+        "nist": 1
+      },
+      "categories": {
+        "factual_definition": 4,
+        "control_guidance": 2,
+        "procedural_guidance": 1,
+        "mitigation": 1,
+        "framework_mapping": 1
+      }
+    }
+  },
+  "overall": {
+    "name": "full",
+    "count": 55,
+    "question_length_words": {
+      "min": 6,
+      "max": 14,
+      "mean": 9.8
+    },
+    "answer_length_words": {
+      "min": 47,
+      "max": 92,
+      "mean": 73.5
+    },
+    "source_families": {
+      "owasp": 27,
+      "nist": 15,
+      "cisa": 13
+    },
+    "categories": {
+      "factual_definition": 22,
+      "mitigation": 9,
+      "risk_explanation": 1,
+      "recommendation": 7,
+      "framework_mapping": 4,
+      "procedural_guidance": 4,
+      "control_guidance": 8
+    }
+  }
+}

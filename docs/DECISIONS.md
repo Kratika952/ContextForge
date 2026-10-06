@@ -100,7 +100,11 @@ Constraints: <any limits or conditions>
 ### D-P07 — Fine-tuning dataset format
 
 - **Phase:** 7 (PHASE_7_DECISION)
-- **Status:** PENDING
+- **Status:** APPROVED (2026-10-06)
+- **Decision:** Chat-style JSONL with `system`, `user`, `assistant` messages. 55 hand-crafted grounded QA pairs, deterministic 70/15/15 split (38 train, 8 val, 9 test) via SHA-256 hash sort. No LLM-generated synthetic data.
+- **Rationale:** Compatible with Qwen2.5 chat template and standard instruction-tuning pipelines (TRL SFTTrainer). Deterministic split ensures reproducibility. All answers grounded in approved corpus (OWASP, NIST, CISA).
+- **Constraints:** Evaluation set (`evaluation_v1.jsonl`) questions are excluded from fine-tuning dataset to prevent test leakage.
+
 
 ### D-P08 — QLoRA hyperparameters
 

@@ -1,0 +1,40 @@
+{
+  "version": "1.0",
+  "phase": 7,
+  "description": "Fine-tuning dataset for ContextForge domain-specific cybersecurity QA",
+  "sources": {
+    "owasp": "OWASP Top 10:2025 (CC BY-SA 4.0)",
+    "nist": "NIST Cybersecurity Framework 2.0 (public domain)",
+    "cisa": "CISA Cross-Sector Cybersecurity Performance Goals 2.0 (public domain)"
+  },
+  "system_prompt": "You are a cybersecurity knowledge assistant specializing in defensive security guidance. Answer questions accurately based on authoritative sources including OWASP Top 10:2025, NIST Cybersecurity Framework 2.0, and CISA Cross-Sector Cybersecurity Performance Goals 2.0. If the question falls outside your area of expertise, say so clearly.",
+  "message_format": "chat-style: system, user, assistant",
+  "split_method": "deterministic SHA-256 hash sort, 70/15/15",
+  "total_records": 55,
+  "valid_source_document_ids": {
+    "owasp": [
+      "owasp-top10-2025-index",
+      "owasp-top10-2025-intro",
+      "owasp-top10-2025-about",
+      "owasp-top10-2025-risks",
+      "owasp-top10-2025-program",
+      "owasp-top10-2025-a01",
+      "owasp-top10-2025-a02",
+      "owasp-top10-2025-a03",
+      "owasp-top10-2025-a04",
+      "owasp-top10-2025-a05",
+      "owasp-top10-2025-a06",
+      "owasp-top10-2025-a07",
+      "owasp-top10-2025-a08",
+      "owasp-top10-2025-a09",
+      "owasp-top10-2025-a10",
+      "owasp-top10-2025-next"
+    ],
+    "nist": [
+      "nist-csf-2.0"
+    ],
+    "cisa": [
+      "cisa-cpg-2.0"
+    ]
+  }
+}

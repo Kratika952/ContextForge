@@ -5,9 +5,116 @@
 
 ---
 
-## Current phase: 6 — Evaluation Harness v1: Base vs RAG
+## Current phase: 7 — Fine-Tuning Dataset Preparation
 
 **Status:** COMPLETE
+
+---
+
+## Phase 6 acceptance criteria
+
+| Criterion | Status |
+|---|---|
+| Development evaluation dataset created with immutable schema | VERIFIED |
+| BasePipeline and RagPipeline evaluated on identical questions and identical model | VERIFIED |
+| Identical deterministic decoding settings (`do_sample=False`, greedy) preserved | VERIFIED |
+| Simple, explainable, reproducible metrics calculated without LLM-as-judge | VERIFIED |
+| Critical OWASP Top 10:2025 question evaluated and documented | VERIFIED |
+| Raw evaluation results persisted to JSON | VERIFIED |
+| Qualitative improvements and failure modes explicitly documented | VERIFIED |
+| Unit tests for evaluation harness pass | VERIFIED |
+| Full pytest test suite passes (78 unit tests) | VERIFIED |
+| No fine-tuning, LoRA, QLoRA, or future phase code introduced | VERIFIED |
+
+---
+
+## Phase 7 — Fine-Tuning Dataset Preparation
+
+**Status:** COMPLETE
+
+### Completed
+
+- [x] Fine-tuning dataset builder implemented (`scripts/build_finetuning_dataset.py`):
+  - 55 hand-crafted, grounded QA pairs across OWASP Top 10:2025 (27), NIST CSF 2.0 (15), and CISA CPG 2.0 (13).
+  - Chat-style JSONL format: system, user, assistant messages compatible with Qwen2.5 chat template.
+  - All answers grounded in approved corpus documents. No LLM-generated synthetic data.
+  - Covers all 7 approved question categories: factual_definition (22), mitigation (9), control_guidance (8), recommendation (7), framework_mapping (4), procedural_guidance (4), risk_explanation (1).
+- [x] Deterministic 70/15/15 split via SHA-256 hash sort: 38 train, 8 validation, 9 test.
+- [x] Evaluation leakage prevention: all 12 `evaluation_v1.jsonl` questions verified absent from fine-tuning dataset.
+- [x] Duplicate detection: zero internal question duplicates.
+- [x] Fake citation check: zero `[SOURCE_N]` patterns in answers.
+- [x] Source provenance validation: all 55 records map to valid `corpus_manifest.csv` document IDs.
+- [x] Dataset outputs written to `data/qa/`:
+  - `finetune_full.jsonl` (55 records, 65 KB)
+  - `finetune_train.jsonl` (38 records)
+  - `finetune_val.jsonl` (8 records)
+  - `finetune_test.jsonl` (9 records)
+  - `finetune_review_sample.jsonl` (18 balanced examples for human review)
+  - `finetune_stats.json` (split statistics)
+  - `finetune_metadata.json` (version, sources, format, split method)
+- [x] Decision D-P07 recorded in `docs/DECISIONS.md`.
+- [x] Tests: 21 Phase 7 unit tests + 99 total unit tests passing.
+
+---
+
+## Active task
+
+Phase 7 complete — awaiting human approval to begin Phase 8.
+
+---
+
+## Blockers
+
+None.
+
+---
+
+## Last verified commands
+
+```text
+.venv\Scripts\python.exe scripts/build_finetuning_dataset.py
+  -> 55 records built, all validation checks passed
+  -> Splits: train=38, val=8, test=9
+  -> Phase 7 dataset build COMPLETE
+
+.venv\Scripts\python.exe -m pytest tests/unit/test_finetuning_dataset.py -v
+  -> 21 passed in 10.29s
+
+.venv\Scripts\python.exe -m pytest tests/unit/ -v --tb=short
+  -> 99 passed, 4 warnings in 80.24s
+```
+
+---
+
+## Phase 7 acceptance criteria
+
+| Criterion | Status |
+|---|---|
+| Fine-tuning JSONL dataset created with chat-style messages | VERIFIED |
+| Train/validation/test splits created (70/15/15) | VERIFIED |
+| Deterministic split (SHA-256 hash sort, no randomness) | VERIFIED |
+| Zero evaluation leakage (no overlap with evaluation_v1.jsonl) | VERIFIED |
+| Zero internal duplicate questions | VERIFIED |
+| Zero fake [SOURCE_N] citations in answers | VERIFIED |
+| Source provenance metadata for all records | VERIFIED |
+| Human review sample created (18 balanced examples) | VERIFIED |
+| Dataset statistics computed and persisted | VERIFIED |
+| Dataset metadata with version, sources, format persisted | VERIFIED |
+| Phase 7 unit tests pass (21/21) | VERIFIED |
+| Full unit test suite passes (99/99) | VERIFIED |
+| Decision D-P07 approved and recorded | VERIFIED |
+| No training, QLoRA, PEFT, or Phase 8 code introduced | VERIFIED |
+
+---
+
+## Next allowed task
+
+> **Phase 8 — QLoRA Fine-Tuning**
+>
+> Gate: Human confirms Phase 7 completion and approves start of Phase 8.
+> Tasks: Train LoRA/QLoRA adapter on fine-tuning dataset using TRL SFTTrainer.
+> Do NOT begin Phase 8 without explicit approval.
+
 
 ---
 
