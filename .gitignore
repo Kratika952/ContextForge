@@ -31,6 +31,7 @@ secrets.json
 # ── Jupyter / IPython ───────────────────────────
 .ipynb_checkpoints/
 *.ipynb
+!notebooks/*.ipynb
 
 # ── pytest / coverage ───────────────────────────
 .pytest_cache/
@@ -56,6 +57,7 @@ artifacts/faiss/
 
 # ── LoRA / QLoRA adapters ────────────────────────
 artifacts/adapters/
+artifacts/finetuning/
 
 # ── Evaluation artifacts (generated) ────────────
 artifacts/evaluation/

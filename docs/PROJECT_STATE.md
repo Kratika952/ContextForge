@@ -5,9 +5,9 @@
 
 ---
 
-## Current phase: 7 — Fine-Tuning Dataset Preparation
+## Current phase: 8 — Pilot QLoRA Fine-Tuning
 
-**Status:** COMPLETE
+**Status:** IN PROGRESS: local preflight complete, GPU pilot pending
 
 ---
 
@@ -59,7 +59,7 @@
 
 ## Active task
 
-Phase 7 complete — awaiting human approval to begin Phase 8.
+Phase 8 — IN PROGRESS: local preflight complete, GPU pilot pending
 
 ---
 
@@ -72,16 +72,13 @@ None.
 ## Last verified commands
 
 ```text
-.venv\Scripts\python.exe scripts/build_finetuning_dataset.py
-  -> 55 records built, all validation checks passed
-  -> Splits: train=38, val=8, test=9
-  -> Phase 7 dataset build COMPLETE
-
-.venv\Scripts\python.exe -m pytest tests/unit/test_finetuning_dataset.py -v
-  -> 21 passed in 10.29s
+.venv\Scripts\python.exe scripts/train_qlora.py --preflight
+  -> Preflight report passed, 0 truncations at max_seq_length=512
+  -> QLoRA 4-bit NF4 and LoRA r=16, alpha=32 configs verified
+  -> Strict CPU refusal verified
 
 .venv\Scripts\python.exe -m pytest tests/unit/ -v --tb=short
-  -> 99 passed, 4 warnings in 80.24s
+  -> 114 passed, 4 warnings in 22.04s
 ```
 
 ---
