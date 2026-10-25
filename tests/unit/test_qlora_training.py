@@ -18,6 +18,7 @@ from scripts.train_qlora import (
     DEFAULT_CONFIG_PATH,
     build_bnb_config,
     build_lora_config,
+    calculate_warmup_steps,
     compute_token_length_stats,
     format_chat_text,
     get_environment_info,
@@ -223,3 +224,69 @@ def test_run_preflight_success():
     """Verify run_preflight executes cleanly and returns 0 exit code."""
     result = run_preflight(DEFAULT_CONFIG_PATH)
     assert result == 0
+
+
+# ── TRL 1.14.1 Compatibility Tests ──────────────────────────────────────────
+
+
+def test_calculate_warmup_steps_pilot_config():
+    """Verify warmup ratio 0.1 resolves to 2 warmup steps for pilot config (38 records, bsz 2, accum 4, epochs 3)."""
+    total_steps, warmup_steps = calculate_warmup_steps(
+        num_train_records=38,
+        batch_size=2,
+        grad_accum=4,
+        epochs=3,
+        warmup_ratio=0.1,
+    )
+    assert total_steps == 15
+    assert warmup_steps == 2
+
+
+def test_sft_config_and_trainer_compatibility_arguments(tmp_path):
+    """Verify SFTConfig receives warmup_steps, max_length and SFTTrainer receives processing_class."""
+    with patch("scripts.train_qlora.get_environment_info") as mock_env, \
+         patch("scripts.train_qlora.load_dataset_records") as mock_records, \
+         patch("transformers.AutoTokenizer.from_pretrained") as mock_tok, \
+         patch("transformers.AutoModelForCausalLM.from_pretrained") as mock_model, \
+         patch("peft.get_peft_model") as mock_peft, \
+         patch("peft.prepare_model_for_kbit_training") as mock_kbit, \
+         patch("trl.SFTConfig") as mock_sft_config, \
+         patch("trl.SFTTrainer") as mock_sft_trainer:
+
+        mock_env.return_value = {"cuda_available": True, "bf16_supported": True}
+        mock_records.return_value = [{"messages": [{"role": "system", "content": "s"}, {"role": "user", "content": "u"}, {"role": "assistant", "content": "a"}]}]
+        mock_tok_inst = MagicMock()
+        mock_tok_inst.apply_chat_template.return_value = "formatted chat text"
+        mock_tok.return_value = mock_tok_inst
+        peft_inst = MagicMock()
+        peft_inst.get_nb_trainable_parameters.return_value = (100, 1000)
+        mock_peft.return_value = peft_inst
+        mock_trainer_inst = MagicMock()
+        mock_trainer_inst.train.return_value = MagicMock(training_loss=0.42)
+        mock_trainer_inst.evaluate.return_value = {"eval_loss": 0.5}
+        mock_trainer_inst.state.global_step = 15
+        mock_trainer_inst.state.log_history = [{"loss": 0.5}, {"eval_loss": 0.5}]
+        mock_sft_trainer.return_value = mock_trainer_inst
+
+        # Point output_dir to tmp_path to avoid modifying repository artifacts in test
+        cfg = load_config(DEFAULT_CONFIG_PATH)
+        cfg["training"]["output_dir"] = str(tmp_path)
+        with patch("scripts.train_qlora.load_config", return_value=cfg):
+            train_qlora(DEFAULT_CONFIG_PATH)
+
+        # Verify SFTConfig call
+        assert mock_sft_config.called
+        config_kwargs = mock_sft_config.call_args.kwargs
+        assert "warmup_steps" in config_kwargs
+        assert config_kwargs["warmup_steps"] == 1  # 1 record -> 1 step -> ceil(1 * 0.1) = 1
+        assert "warmup_ratio" not in config_kwargs
+        assert "max_length" in config_kwargs
+        assert config_kwargs["max_length"] == 512
+        assert "max_seq_length" not in config_kwargs
+
+        # Verify SFTTrainer call
+        assert mock_sft_trainer.called
+        trainer_kwargs = mock_sft_trainer.call_args.kwargs
+        assert "processing_class" in trainer_kwargs
+        assert "tokenizer" not in trainer_kwargs
+

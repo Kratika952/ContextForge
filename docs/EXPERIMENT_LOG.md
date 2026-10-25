@@ -232,4 +232,77 @@ Artifact paths:
 Notes:
   - Development evaluation on 12 curated questions. Small dataset, reproducible with scripts/evaluate_base_vs_rag.py.
 
+---
+
+### EXP-005 — Phase 8 Pilot QLoRA Fine-Tuning
+Date: 2026-10-25
+Phase: 8
+Base Git commit: 49a5a79
+Base model: Qwen/Qwen2.5-1.5B-Instruct
+Hardware: NVIDIA GeForce RTX 2050, 4 GB VRAM
+Environment:
+  - Python: 3.13.9
+  - PyTorch: 2.14.0+cu130
+  - CUDA: 13.0 runtime
+  - Transformers: 5.17.0
+  - PEFT: 0.21.2
+  - TRL: 1.14.1
+  - bitsandbytes: 0.50.2
+  - Accelerate: 1.15.0
+  - Datasets: 5.1.0
+Dataset:
+  - train: 38 records
+  - validation: 8 records
+  - held-out test: 9 records
+  - test used during training: NO (held-out test split strictly protected)
+QLoRA:
+  - 4-bit NF4
+  - double_quant: True
+LoRA:
+  - r: 16
+  - alpha: 32
+  - dropout: 0.05
+  - target_modules: all-linear
+  - trainable parameters: 18,464,768 / 1,562,179,072 (~1.182%)
+Training:
+  - epochs: 3
+  - optimization steps: 15
+  - learning rate: 2e-4
+  - batch size: 2
+  - gradient accumulation: 4
+  - max sequence length: 512
+  - seed: 42
+  - warmup ratio: 0.1
+  - resolved warmup steps: 2
+Results:
+  - training loss: 1.8394
+  - validation loss: 1.2016
+  - runtime: ~86.47 seconds
+  - CUDA OOM: NO
+Adapter:
+  - path: artifacts/finetuning/phase8_pilot/
+  - adapter reload: PASS
+  - single inference smoke: PASS
+Qualitative pilot smoke:
+  - questions evaluated: 6
+  - protected Phase 7 test overlap: 0/6
+  - Phase 6 evaluation overlap: 0/6
+  - train overlaps: 3/6 (intentionally labeled as trained-domain checks)
+  - validation overlaps: 1/6
+  - no obvious generation regression observed
+  - Fine-tuned outputs were generally more concise/focused than Base on this small smoke set
+  - out-of-domain cookie question remained normal/general-purpose without cybersecurity contamination or unwarranted refusal
+Conclusion: The pilot demonstrates successful domain adaptation and no obvious qualitative regression. Formal comparative performance remains to be measured in Phase 9.
+Compatibility notes:
+  - Initial training attempt failed before the first gradient step because installed TRL 1.14.1 API expected:
+      - `warmup_steps` instead of `warmup_ratio` in `SFTConfig`
+      - `max_length` instead of `max_seq_length` in `SFTConfig`
+      - `processing_class` instead of `tokenizer` in `SFTTrainer`
+  - A minimal compatibility patch in `scripts/train_qlora.py` and unit tests in `tests/unit/test_qlora_training.py` resolved these translations while preserving exact experiment semantics.
+Artifact paths:
+  - artifacts/finetuning/phase8_pilot/adapter_config.json
+  - artifacts/finetuning/phase8_pilot/adapter_model.safetensors
+  - artifacts/finetuning/phase8_pilot/training_metadata.json
+
+
 

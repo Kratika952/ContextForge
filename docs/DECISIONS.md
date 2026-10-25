@@ -109,7 +109,21 @@ Constraints: <any limits or conditions>
 ### D-P08 — QLoRA hyperparameters
 
 - **Phase:** 8 (PHASE_8_EXPERIMENT)
-- **Status:** PENDING
+- **Status:** APPROVED (2026-10-25)
+- **Decision:** Pilot QLoRA fine-tuning hyperparameters approved for `Qwen/Qwen2.5-1.5B-Instruct` on NVIDIA GPU (GeForce RTX 2050, 4 GB VRAM):
+  - Base model: `Qwen/Qwen2.5-1.5B-Instruct`
+  - Quantization: 4-bit NormalFloat4 (NF4), `double_quant=True`, `compute_dtype=bfloat16`
+  - LoRA: rank `r=16`, scaling `alpha=32`, dropout `0.05`, `target_modules=all-linear`, `bias="none"` (18,464,768 trainable parameters, ~1.182% of total)
+  - Optimizer & Training: AdamW 8-bit (`paged_adamw_8bit`), learning rate `2e-4`, linear schedule, `epochs=3`, `per_device_train_batch_size=2`, `gradient_accumulation_steps=4` (effective batch size 8), `seed=42`
+  - Sequence & Output: `max_seq_length=512`, `dataset_text_field="text"`, `packing=False`
+- **Runtime API Compatibility Translations:**
+  - `config/finetune.yaml` maintains project-standard configuration schema (`warmup_ratio: 0.1`, `max_seq_length: 512`).
+  - At the TRL 1.14.1 boundary in `scripts/train_qlora.py`:
+    - `warmup_ratio=0.1` is translated at runtime to `warmup_steps=2` via `calculate_warmup_steps(num_records=38, batch_size=2, grad_accum=4, epochs=3, ratio=0.1)` (15 total steps * 0.1 = 1.5 -> 2 steps).
+    - `max_seq_length=512` is mapped to `SFTConfig(max_length=512)`.
+    - Tokenizer is passed to `SFTTrainer(processing_class=tokenizer)`.
+  - These translations are API-layer adaptations for Hugging Face TRL 1.14.1, strictly preserving research hyperparameters without altering experiment semantics.
+- **Outcome:** Verified in EXP-005. Training loss decreased from 3.01 to 1.8394, validation loss decreased from 1.90 to 1.2016 in 15 optimizer steps (~86.47s), with clean adapter reloading and generation.
 
 ### D-P09 — Final evaluation thresholds
 

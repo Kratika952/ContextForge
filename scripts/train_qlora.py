@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import math
 import os
 import platform
 import statistics
@@ -233,6 +234,27 @@ def build_lora_config(config: dict[str, Any]) -> Any:
     )
 
 
+def calculate_warmup_steps(
+    num_train_records: int,
+    batch_size: int,
+    grad_accum: int,
+    epochs: int,
+    warmup_ratio: float,
+) -> tuple[int, int]:
+    """Calculate total optimizer steps and equivalent warmup steps generically.
+
+    micro_batches_per_epoch = ceil(num_train_records / batch_size)
+    optimizer_steps_per_epoch = ceil(micro_batches_per_epoch / grad_accum)
+    total_optimizer_steps = optimizer_steps_per_epoch * epochs
+    warmup_steps = ceil(total_optimizer_steps * warmup_ratio)
+    """
+    micro_batches = math.ceil(num_train_records / batch_size)
+    steps_per_epoch = math.ceil(micro_batches / grad_accum)
+    total_steps = steps_per_epoch * epochs
+    warmup_steps = math.ceil(total_steps * warmup_ratio)
+    return total_steps, warmup_steps
+
+
 # ── Preflight Dry-Run Mode ──────────────────────────────────────────────────
 
 
@@ -304,6 +326,15 @@ def run_preflight(config_path: str | Path = DEFAULT_CONFIG_PATH) -> int:
     print(f"  QLoRA Quantization: 4-bit {bnb_cfg.bnb_4bit_quant_type} (double_quant={bnb_cfg.bnb_4bit_use_double_quant})")
     print(f"  Resolved compute dtype: {compute_dtype}")
     print(f"  LoRA Config: r={lora_cfg.r}, alpha={lora_cfg.lora_alpha}, dropout={lora_cfg.lora_dropout}, targets={lora_cfg.target_modules}")
+
+    warmup_ratio = config["training"].get("warmup_ratio", 0.1)
+    batch_size = config["training"].get("per_device_train_batch_size", 2)
+    grad_accum = config["training"].get("gradient_accumulation_steps", 4)
+    epochs = config["training"].get("num_train_epochs", 3)
+    total_steps, warmup_steps = calculate_warmup_steps(
+        len(train_recs), batch_size, grad_accum, epochs, warmup_ratio
+    )
+    print(f"  Warmup: ratio={warmup_ratio}, total_optimizer_steps={total_steps}, resolved warmup_steps={warmup_steps}")
     print("-" * 60)
 
     if not env["cuda_available"]:
@@ -386,14 +417,28 @@ def train_qlora(config_path: str | Path = DEFAULT_CONFIG_PATH) -> dict[str, Any]
 
     max_seq_length = config["dataset"]["max_seq_length"]
     train_cfg = config["training"]
+    batch_size = train_cfg.get("per_device_train_batch_size", 2)
+    grad_accum = train_cfg.get("gradient_accumulation_steps", 4)
+    epochs = train_cfg.get("num_train_epochs", 3)
+    warmup_ratio = train_cfg.get("warmup_ratio", 0.1)
+
+    total_optimizer_steps, warmup_steps = calculate_warmup_steps(
+        len(train_recs), batch_size, grad_accum, epochs, warmup_ratio
+    )
+    logger.info(
+        "Warmup configuration: warmup_ratio=%.2f, total_optimizer_steps=%d, resolved warmup_steps=%d",
+        warmup_ratio,
+        total_optimizer_steps,
+        warmup_steps,
+    )
 
     training_args = SFTConfig(
         output_dir=str(output_dir),
-        num_train_epochs=train_cfg.get("num_train_epochs", 3),
+        num_train_epochs=epochs,
         learning_rate=train_cfg.get("learning_rate", 2e-4),
-        per_device_train_batch_size=train_cfg.get("per_device_train_batch_size", 2),
-        gradient_accumulation_steps=train_cfg.get("gradient_accumulation_steps", 4),
-        warmup_ratio=train_cfg.get("warmup_ratio", 0.1),
+        per_device_train_batch_size=batch_size,
+        gradient_accumulation_steps=grad_accum,
+        warmup_steps=warmup_steps,
         lr_scheduler_type=train_cfg.get("lr_scheduler_type", "linear"),
         weight_decay=train_cfg.get("weight_decay", 0.0),
         seed=train_cfg.get("seed", 42),
@@ -401,7 +446,7 @@ def train_qlora(config_path: str | Path = DEFAULT_CONFIG_PATH) -> dict[str, Any]
         eval_strategy=train_cfg.get("evaluation_strategy", "epoch"),
         save_strategy=train_cfg.get("save_strategy", "epoch"),
         save_total_limit=train_cfg.get("save_total_limit", 1),
-        max_seq_length=max_seq_length,
+        max_length=max_seq_length,
         dataset_text_field="text",
         packing=False,
         report_to="none",
@@ -412,7 +457,7 @@ def train_qlora(config_path: str | Path = DEFAULT_CONFIG_PATH) -> dict[str, Any]
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
         args=training_args,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
     )
 
     logger.info("Starting pilot QLoRA training run...")

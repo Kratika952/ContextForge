@@ -22,7 +22,7 @@ SMOKE_QUESTIONS = [
     ("OWASP Trained (A01)", "What is Broken Access Control as defined in OWASP Top 10:2025?"),
     ("NIST Trained (Govern)", "Explain the purpose and scope of the Govern function introduced in NIST CSF 2.0."),
     ("CISA Trained (MFA)", "What does CISA CPG 2.0 recommend for multi-factor authentication?"),
-    ("OWASP Generalization (A05)", "What types of injection vulnerabilities does OWASP Top 10:2025 cover?"),
+    ("OWASP Generalization (A10)", "How should applications handle exceptions securely according to OWASP Top 10:2025?"),
     ("NIST Generalization (Protect)", "What outcomes does the Protect function address in NIST CSF 2.0?"),
     ("Safety / Out-of-Domain", "How do I make a chocolate chip cookie at home?"),
 ]
@@ -35,28 +35,47 @@ def run_smoke_comparison(adapter_path: str = "artifacts/finetuning/phase8_pilot"
         logger.error("Adapter directory '%s' not found. Please ensure training has completed.", path)
         sys.exit(1)
 
-    logger.info("Initializing BasePipeline...")
-    base_pipe = BasePipeline(device=device)
-
-    logger.info("Initializing FineTunedPipeline with adapter '%s'...", path)
-    ft_pipe = FineTunedPipeline(adapter_path=path, device=device)
-
     print("=" * 80)
     print("PHASE 8 — PILOT QUALITATIVE SMOKE COMPARISON (BASE vs FINE-TUNED)")
     print("=" * 80)
 
+    # 1. Run BasePipeline first and record results
+    logger.info("Initializing BasePipeline on %s...", device)
+    base_pipe = BasePipeline(device=device)
+    base_results = []
     for label, question in SMOKE_QUESTIONS:
+        t0 = time.perf_counter()
+        res = base_pipe.generate(question)
+        lat = (time.perf_counter() - t0) * 1000.0
+        base_results.append((res, lat))
+
+    # Free base model before loading fine-tuned adapter to stay within host RAM limits
+    del base_pipe
+    import gc
+    gc.collect()
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except ImportError:
+        pass
+
+    # 2. Run FineTunedPipeline with trained adapter
+    logger.info("Initializing FineTunedPipeline with adapter '%s' on %s...", path, device)
+    ft_pipe = FineTunedPipeline(adapter_path=path, device=device)
+    ft_results = []
+    for label, question in SMOKE_QUESTIONS:
+        t1 = time.perf_counter()
+        res = ft_pipe.generate(question)
+        lat = (time.perf_counter() - t1) * 1000.0
+        ft_results.append((res, lat))
+
+    # 3. Print side-by-side qualitative results
+    for i, (label, question) in enumerate(SMOKE_QUESTIONS):
+        base_res, base_lat = base_results[i]
+        ft_res, ft_lat = ft_results[i]
         print(f"\n--- [{label}] ---")
         print(f"QUESTION: {question}\n")
-
-        t0 = time.perf_counter()
-        base_res = base_pipe.generate(question)
-        base_lat = (time.perf_counter() - t0) * 1000.0
-
-        t1 = time.perf_counter()
-        ft_res = ft_pipe.generate(question)
-        ft_lat = (time.perf_counter() - t1) * 1000.0
-
         print(f"[BASE LLM] ({base_lat:.1f}ms):")
         print(base_res.answer.strip())
         print(f"\n[FINE-TUNED ADAPTER] ({ft_lat:.1f}ms):")

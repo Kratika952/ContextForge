@@ -5,26 +5,29 @@
 
 ---
 
-## Current phase: 8 — Pilot QLoRA Fine-Tuning
+## Current phase: 8 — COMPLETE
 
-**Status:** IN PROGRESS: local preflight complete, GPU pilot pending
+**Status:** COMPLETE
 
 ---
 
-## Phase 6 acceptance criteria
+## Phase 8 acceptance criteria
 
 | Criterion | Status |
 |---|---|
-| Development evaluation dataset created with immutable schema | VERIFIED |
-| BasePipeline and RagPipeline evaluated on identical questions and identical model | VERIFIED |
-| Identical deterministic decoding settings (`do_sample=False`, greedy) preserved | VERIFIED |
-| Simple, explainable, reproducible metrics calculated without LLM-as-judge | VERIFIED |
-| Critical OWASP Top 10:2025 question evaluated and documented | VERIFIED |
-| Raw evaluation results persisted to JSON | VERIFIED |
-| Qualitative improvements and failure modes explicitly documented | VERIFIED |
-| Unit tests for evaluation harness pass | VERIFIED |
-| Full pytest test suite passes (78 unit tests) | VERIFIED |
-| No fine-tuning, LoRA, QLoRA, or future phase code introduced | VERIFIED |
+| QLoRA pilot training script with strict GPU enforcement | VERIFIED |
+| Training hyperparameter configuration (`config/finetune.yaml`) | VERIFIED |
+| Safe preflight execution with token length verification | VERIFIED |
+| QLoRA pilot training executed on NVIDIA GPU (GeForce RTX 2050, 4 GB VRAM) | VERIFIED |
+| Zero CUDA OOM and clean convergence (train loss: 1.8394, val loss: 1.2016) | VERIFIED |
+| PEFT adapter saved to artifacts/finetuning/phase8_pilot/ | VERIFIED |
+| Adapter reload and single-inference smoke test verified | VERIFIED |
+| Qualitative pilot smoke script executed with Base vs Fine-tuned comparison | VERIFIED |
+| Zero leakage against Phase 7 test split (0/6) and Phase 6 evaluation split (0/6) | VERIFIED |
+| Out-of-domain safety check passed (normal chocolate chip cookie response) | VERIFIED |
+| Full unit regression suite passes (116 passed, 0 failed) | VERIFIED |
+| Decision D-P08 approved in `docs/DECISIONS.md` | VERIFIED |
+| Experiment EXP-005 recorded in `docs/EXPERIMENT_LOG.md` | VERIFIED |
 
 ---
 
@@ -57,9 +60,31 @@
 
 ---
 
+## Phase 8 — Pilot QLoRA Fine-Tuning
+
+**Status:** COMPLETE
+
+### Completed
+
+- [x] Dedicated GPU environment configured (`.venv-gpu`) with PyTorch CUDA 13.0, Transformers 5.17.0, PEFT 0.21.2, TRL 1.14.1, bitsandbytes 0.50.2 on NVIDIA GeForce RTX 2050 (4 GB VRAM).
+- [x] QLoRA training script with strict GPU enforcement (`scripts/train_qlora.py`).
+- [x] Hyperparameter configuration defined (`config/finetune.yaml`).
+- [x] Preflight dry-run verification passing (`--preflight`).
+- [x] TRL 1.14.1 API compatibility translations verified (`warmup_ratio=0.1` -> `warmup_steps=2`, `max_length=512`, `processing_class=tokenizer`).
+- [x] Physical pilot QLoRA training executed: 38 train records, 15/15 optimizer steps, train loss 1.8394, val loss 1.2016 in ~86.47s without CUDA OOM.
+- [x] Adapter persisted to `artifacts/finetuning/phase8_pilot/` (`adapter_model.safetensors`, `adapter_config.json`, `training_metadata.json`).
+- [x] PEFT adapter reload verified via `FineTunedPipeline`.
+- [x] Leakage audit on qualitative smoke set: replaced leaking Q4 with fresh OWASP A10 question (0 test overlap, 0 Phase 6 eval overlap, max Jaccard 0.375).
+- [x] Qualitative pilot smoke comparison executed (`scripts/run_pilot_smoke.py --device cuda`): Base vs Fine-tuned comparison across 6 questions; no generation regressions observed; normal out-of-domain cookie response.
+- [x] Experiment EXP-005 recorded in `docs/EXPERIMENT_LOG.md`.
+- [x] Decision D-P08 approved in `docs/DECISIONS.md`.
+- [x] Unit test suite: 116 passed in 40.38s.
+
+---
+
 ## Active task
 
-Phase 8 — IN PROGRESS: local preflight complete, GPU pilot pending
+Phase 8 complete — awaiting human approval to begin Phase 9.
 
 ---
 
@@ -72,45 +97,25 @@ None.
 ## Last verified commands
 
 ```text
-.venv\Scripts\python.exe scripts/train_qlora.py --preflight
-  -> Preflight report passed, 0 truncations at max_seq_length=512
-  -> QLoRA 4-bit NF4 and LoRA r=16, alpha=32 configs verified
-  -> Strict CPU refusal verified
-
 .venv\Scripts\python.exe -m pytest tests/unit/ -v --tb=short
-  -> 114 passed, 4 warnings in 22.04s
+  -> 116 passed, 4 warnings in 40.38s
+
+.venv-gpu\Scripts\python.exe scripts/train_qlora.py
+  -> Completed 15/15 steps on NVIDIA RTX 2050; train loss: 1.8394, val loss: 1.2016
+
+.venv-gpu\Scripts\python.exe scripts/run_pilot_smoke.py --device cuda
+  -> Completed qualitative Base vs Fine-tuned smoke comparison across 6 questions
 ```
-
----
-
-## Phase 7 acceptance criteria
-
-| Criterion | Status |
-|---|---|
-| Fine-tuning JSONL dataset created with chat-style messages | VERIFIED |
-| Train/validation/test splits created (70/15/15) | VERIFIED |
-| Deterministic split (SHA-256 hash sort, no randomness) | VERIFIED |
-| Zero evaluation leakage (no overlap with evaluation_v1.jsonl) | VERIFIED |
-| Zero internal duplicate questions | VERIFIED |
-| Zero fake [SOURCE_N] citations in answers | VERIFIED |
-| Source provenance metadata for all records | VERIFIED |
-| Human review sample created (18 balanced examples) | VERIFIED |
-| Dataset statistics computed and persisted | VERIFIED |
-| Dataset metadata with version, sources, format persisted | VERIFIED |
-| Phase 7 unit tests pass (21/21) | VERIFIED |
-| Full unit test suite passes (99/99) | VERIFIED |
-| Decision D-P07 approved and recorded | VERIFIED |
-| No training, QLoRA, PEFT, or Phase 8 code introduced | VERIFIED |
 
 ---
 
 ## Next allowed task
 
-> **Phase 8 — QLoRA Fine-Tuning**
+> **Phase 9 — Final Comparative Evaluation**
 >
-> Gate: Human confirms Phase 7 completion and approves start of Phase 8.
-> Tasks: Train LoRA/QLoRA adapter on fine-tuning dataset using TRL SFTTrainer.
-> Do NOT begin Phase 8 without explicit approval.
+> Gate: Human confirms Phase 8 completion and approves start of Phase 9.
+> Tasks: Compare Base, RAG, and Fine-Tuned pipelines across evaluation benchmark with formal comparative metrics.
+> Do NOT begin Phase 9 without explicit approval.
 
 
 ---
@@ -405,57 +410,3 @@ None.
 - [x] Raw results saved to `artifacts/evaluation/base_vs_rag_v1.json` (gitignored).
 - [x] Unit test suite: 8 dedicated evaluation unit tests (`tests/unit/test_evaluation.py`) verifying dataset loading, metric calculations, expected-source matching, refusal checks, and serialization (78 total unit tests passing).
 - [x] Experiment EXP-004 recorded in `docs/EXPERIMENT_LOG.md`.
-
----
-
-## Active task
-
-Phase 6 complete — awaiting human approval to begin Phase 7.
-
----
-
-## Blockers
-
-None.
-
----
-
-## Last verified commands
-
-```text
-.venv\Scripts\python.exe scripts/evaluate_base_vs_rag.py
-  -> Base vs RAG evaluation executed on 12 questions; raw results persisted to artifacts/evaluation/base_vs_rag_v1.json
-
-.venv\Scripts\python.exe -m pytest tests/unit/test_evaluation.py -v
-  -> 8 passed in 0.15s
-
-.venv\Scripts\python.exe -m pytest -v --ignore=tests/integration --tb=short
-  -> 78 passed in 81.28s
-```
-
----
-
-## Phase 6 acceptance criteria
-
-| Criterion | Status |
-|---|---|
-| Development evaluation dataset created with immutable schema | VERIFIED |
-| BasePipeline and RagPipeline evaluated on identical questions and identical model | VERIFIED |
-| Identical deterministic decoding settings (`do_sample=False`, greedy) preserved | VERIFIED |
-| Simple, explainable, reproducible metrics calculated without LLM-as-judge | VERIFIED |
-| Critical OWASP Top 10:2025 question evaluated and documented | VERIFIED |
-| Raw evaluation results persisted to JSON | VERIFIED |
-| Qualitative improvements and failure modes explicitly documented | VERIFIED |
-| Unit tests for evaluation harness pass | VERIFIED |
-| Full pytest test suite passes (78 unit tests) | VERIFIED |
-| No fine-tuning, LoRA, QLoRA, or future phase code introduced | VERIFIED |
-
----
-
-## Next allowed task
-
-> **Phase 7 — Fine-Tuning Dataset Preparation**
->
-> Gate: Human confirms Phase 6 completion and approves start of Phase 7.
-> Tasks: Create domain instruction tuning dataset from approved corpus without contaminating test benchmark.
-> Do NOT begin Phase 7 without explicit approval.
