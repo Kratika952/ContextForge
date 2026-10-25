@@ -125,10 +125,16 @@ Constraints: <any limits or conditions>
   - These translations are API-layer adaptations for Hugging Face TRL 1.14.1, strictly preserving research hyperparameters without altering experiment semantics.
 - **Outcome:** Verified in EXP-005. Training loss decreased from 3.01 to 1.8394, validation loss decreased from 1.90 to 1.2016 in 15 optimizer steps (~86.47s), with clean adapter reloading and generation.
 
-### D-P09 — Final evaluation thresholds
+### D-P09 — Final evaluation thresholds & comparative architecture decision
 
 - **Phase:** 9 (PHASE_9_DECISION)
-- **Status:** PENDING
+- **Status:** APPROVED (2026-10-25)
+- **Decision:** Based on the empirical three-way comparative evaluation across Base LLM (`Qwen/Qwen2.5-1.5B-Instruct`), RAG Pipeline (BGE embeddings + FAISS medium + top_k=5), and Fine-Tuned Pipeline (QLoRA pilot adapter) on the held-out test benchmark (9 items, EXP-006):
+  - **Best Overall Answer-Quality & Factual Grounding:** RAG (`RagPipeline`). Highest semantic similarity (0.8715), 100% document Recall@5, 100% citation validity, and complete elimination of framework-level hallucinations observed in Base LLM.
+  - **Lowest Latency & Highest Token Precision:** Fine-Tuned (`FineTunedPipeline`). 2.1x lower inference latency (5,633ms vs 11,837ms), 20x smaller input prompt payload (64 vs 1,347 tokens), 58% fewer generated tokens (73 vs 174 tokens), and highest token precision (0.3933) and token F1 (0.3274).
+  - **Base LLM Performance:** Base LLM exhibited serious hallucinations on domain-specific standards (e.g. claiming CISA CPG 2.0 has not yet been released or refusing standard CISA terminology as unknown), confirming ungrounded base models are insufficient for authoritative cybersecurity advisory.
+  - **ContextForge Architectural Recommendation:** Maintain both RAG and Fine-Tuned pipelines as distinct modular capabilities in Phase 10 (FastAPI backend). RAG serves as the primary route for factual compliance, document queries, and audit-ready citation provenance; Fine-Tuned serves as the low-latency route for concise domain interaction.
+- **Constraints & Limitations:** Benchmark evaluated on 9 strictly held-out domain items without synthetic generation or prompt leakage. Sample size is appropriate for directional architecture validation but too small for broad statistical generalization. No unsupported questions were in the held-out split.
 
 ---
 

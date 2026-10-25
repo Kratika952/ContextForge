@@ -227,3 +227,157 @@ def test_evaluation_result_json_serialization(tmp_path: Path):
     assert loaded["metadata"]["version"] == "v1"
     assert loaded["summary"]["total_questions"] == 1
     assert loaded["items"][0]["id"] == "q1"
+
+
+# ── Phase 9 Unit Tests ───────────────────────────────────────────────────────
+
+
+def test_phase9_derived_dataset_preserves_heldout_records():
+    """Verify that phase9_final_test.jsonl is an exact 9-record structural projection of finetune_test.jsonl."""
+    from contextforge.evaluation.evaluator import load_phase9_test_dataset
+
+    derived_records = load_phase9_test_dataset("data/qa/phase9_final_test.jsonl")
+    assert len(derived_records) == 9
+
+    with open("data/qa/finetune_test.jsonl", "r", encoding="utf-8") as f:
+        src_recs = [json.loads(line) for line in f if line.strip()]
+
+    assert len(src_recs) == 9
+
+    for d, s in zip(derived_records, src_recs):
+        user_q = [m["content"] for m in s["messages"] if m["role"] == "user"][0]
+        asst_a = [m["content"] for m in s["messages"] if m["role"] == "assistant"][0]
+
+        assert d.id == s["id"]
+        assert d.question == user_q
+        assert d.reference_answer == asst_a
+        assert d.source_family == s["source_family"]
+        assert d.source_document_id == s["source_document_id"]
+        assert d.category == s["category"]
+
+
+def test_compute_token_scores_deterministic():
+    """Verify normalized token precision, recall, and F1 calculations."""
+    from contextforge.evaluation.evaluator import compute_token_scores
+
+    # Exact match
+    p, r, f1 = compute_token_scores("Multi-factor authentication (MFA)", "Multi-factor authentication (MFA)")
+    assert p == 1.0 and r == 1.0 and f1 == 1.0
+
+    # Partial overlap
+    p, r, f1 = compute_token_scores("CISA recommends MFA.", "CISA recommends implementing strong MFA policies.")
+    # pred tokens: ['cisa', 'recommends', 'mfa'] (3)
+    # ref tokens: ['cisa', 'recommends', 'implementing', 'strong', 'mfa', 'policies'] (6)
+    # overlap: 3
+    assert p == 1.0
+    assert r == 0.5
+    assert f1 == round((2 * 1.0 * 0.5) / 1.5, 4)
+
+    # Disjoint
+    p, r, f1 = compute_token_scores("Apples and oranges", "Chocolate chip cookies")
+    assert p == 0.0 and r == 0.0 and f1 == 0.0
+
+
+def test_compute_retrieval_metrics():
+    """Verify hit@K and MRR computation against expected document ID."""
+    from contextforge.evaluation.evaluator import compute_retrieval_metrics
+
+    sources = [
+        RetrievedChunk(chunk_id="c1", document_id="a02-2025-security-misconfiguration", text="", score=0.9, rank=1, source_label="[SOURCE_1]"),
+        RetrievedChunk(chunk_id="c2", document_id="a05-2025-injection", text="", score=0.85, rank=2, source_label="[SOURCE_2]"),
+        RetrievedChunk(chunk_id="c3", document_id="cisa-cpg-20", text="", score=0.8, rank=3, source_label="[SOURCE_3]"),
+    ]
+
+    # Target is rank 2
+    metrics = compute_retrieval_metrics(sources, "owasp-top10-2025-a05")
+    assert metrics["hit_at_1"] == 0.0
+    assert metrics["hit_at_3"] == 1.0
+    assert metrics["hit_at_5"] == 1.0
+    assert metrics["mrr"] == 0.5
+    assert metrics["first_match_rank"] == 2
+
+    # Target not in sources
+    metrics_miss = compute_retrieval_metrics(sources, "nist-csf-2.0")
+    assert metrics_miss["hit_at_1"] == 0.0
+    assert metrics_miss["hit_at_5"] == 0.0
+    assert metrics_miss["mrr"] == 0.0
+    assert metrics_miss["first_match_rank"] is None
+
+
+def test_evaluate_phase9_triplet_and_aggregation():
+    """Verify evaluate_phase9_triplet and aggregate_phase9_results produce expected structure."""
+    from unittest.mock import MagicMock
+    from contextforge.evaluation.evaluator import (
+        Phase9TestQuestion,
+        aggregate_phase9_results,
+        evaluate_phase9_triplet,
+    )
+
+    q = Phase9TestQuestion(
+        id="ft_0001",
+        question="What is MFA?",
+        reference_answer="Multi-factor authentication requires multiple credentials.",
+        source_family="cisa",
+        source_document_id="cisa-cpg-2.0",
+        category="factual_definition",
+    )
+
+    base_res = AnswerResult(
+        question="What is MFA?",
+        pipeline="base",
+        answer="MFA is multi-factor authentication.",
+        model_id="Qwen/Qwen2.5-1.5B-Instruct",
+        latency_ms=100.0,
+        metadata={"input_token_count": 10, "output_token_count": 6},
+    )
+    rag_sources = [
+        RetrievedChunk(chunk_id="c1", document_id="cisa-cpg-20", text="", score=0.9, rank=1, source_label="[SOURCE_1]")
+    ]
+    rag_res = AnswerResult(
+        question="What is MFA?",
+        pipeline="rag",
+        answer="According to [SOURCE_1], Multi-factor authentication requires multiple credentials.",
+        model_id="Qwen/Qwen2.5-1.5B-Instruct",
+        sources=rag_sources,
+        latency_ms=250.0,
+        metadata={
+            "input_token_count": 500,
+            "output_token_count": 12,
+            "context_token_count": 450,
+            "retrieval_latency_ms": 30.0,
+            "generation_latency_ms": 220.0,
+            "citation_labels_used": ["[SOURCE_1]"],
+            "invalid_citations": [],
+        },
+    )
+    ft_res = AnswerResult(
+        question="What is MFA?",
+        pipeline="finetuned",
+        answer="Multi-factor authentication requires multiple credentials.",
+        model_id="Qwen/Qwen2.5-1.5B-Instruct",
+        latency_ms=120.0,
+        metadata={"input_token_count": 10, "output_token_count": 8},
+    )
+
+
+    # Mock embedder for fast unit test
+    mock_embedder = MagicMock()
+    mock_embedder.embed_passages.return_value = [[1.0, 0.0], [1.0, 0.0]]
+
+    eval_item = evaluate_phase9_triplet(q, base_res, rag_res, ft_res, embedder=mock_embedder)
+    assert eval_item["id"] == "ft_0001"
+    assert "token_f1" in eval_item["base"]
+    assert "token_f1" in eval_item["rag"]
+    assert "token_f1" in eval_item["finetuned"]
+    assert eval_item["rag"]["retrieval"]["hit_at_1"] == 1.0
+
+    agg = aggregate_phase9_results([eval_item])
+    assert agg["total_test_questions"] == 1
+    assert agg["unsupported_refusal_metrics"] == "NOT_APPLICABLE"
+    assert "token_f1_mean" in agg["base"]
+    assert "token_f1_mean" in agg["rag"]
+    assert "token_f1_mean" in agg["finetuned"]
+    assert agg["rag"]["document_hit_at_1"] == 1.0
+    assert agg["rag"]["citation_presence_rate"] == 1.0
+    assert agg["rag"]["citation_validity"] == 1.0
+

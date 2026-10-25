@@ -5,9 +5,28 @@
 
 ---
 
-## Current phase: 8 — COMPLETE
+## Current phase: 9 — COMPLETE
 
 **Status:** COMPLETE
+
+---
+
+## Phase 9 acceptance criteria
+
+| Criterion | Status |
+|---|---|
+| Immutable Phase 9 test view created (`data/qa/phase9_final_test.jsonl`, 9 items, zero modifications to `finetune_test.jsonl`) | VERIFIED |
+| Configuration frozen (`config/phase9_evaluation.yaml`) with FAISS and adapter SHA-256 hashes | VERIFIED |
+| Fairness gate verified: Base, RAG, and Fine-Tuned evaluated under identical precision (BF16, CUDA, unquantized base) | VERIFIED |
+| Three-way evaluation metrics implemented in `src/contextforge/evaluation/` (token P/R/F1, BGE semantic similarity, document hit@K/MRR, citation rates) | VERIFIED |
+| Unsupported refusal metrics flagged as NOT_APPLICABLE (0 unsupported items in held-out test split) | VERIFIED |
+| Sequential execution runner implemented with per-pipeline CUDA cleanup (`scripts/evaluate_three_way.py`) | VERIFIED |
+| Incremental persistence of raw predictions before aggregate metric calculation | VERIFIED |
+| Full unit regression suite passing (120 passed, 0 failed) | VERIFIED |
+| Final held-out evaluation executed without post-hoc tuning | VERIFIED |
+| Detailed per-question and qualitative review completed | VERIFIED |
+| Experiment EXP-006 recorded in `docs/EXPERIMENT_LOG.md` | VERIFIED |
+| Decision D-P09 approved in `docs/DECISIONS.md` | VERIFIED |
 
 ---
 
@@ -82,9 +101,40 @@
 
 ---
 
+## Phase 9 — Final Comparative Evaluation
+
+**Status:** COMPLETE
+
+### Completed
+
+- [x] Immutable Phase 9 test view created (`data/qa/phase9_final_test.jsonl`) derived strictly from `data/qa/finetune_test.jsonl` (9 records, exact field preservation, SHA-256: `6132e6aa07444cc65d217734c8e47526cd8b6321ac61bc7404c4f17285a22d21`).
+- [x] Evaluation configuration frozen in `config/phase9_evaluation.yaml` with verified artifact checksums.
+- [x] Fairness gate verified: Base, RAG, and Fine-Tuned all infer in BF16 unquantized base precision on CUDA.
+- [x] Triplet evaluation engine implemented in `src/contextforge/evaluation/evaluator.py`:
+  - Token-level precision, recall, and F1 (SQuAD-style deterministic whitespace-normalized).
+  - Semantic similarity using frozen approved `BAAI/bge-small-en-v1.5` embedder.
+  - RAG document retrieval metrics (Hit@1, Hit@3, Hit@5, MRR) against ground-truth document IDs.
+  - Citation presence and citation validity tracking.
+  - Refusal metrics explicitly marked `NOT_APPLICABLE` for supported-only test split.
+- [x] Sequential three-way evaluation runner implemented (`scripts/evaluate_three_way.py`):
+  - Memory isolation: Base -> cleanup -> RAG -> cleanup -> Fine-Tuned -> cleanup -> CPU metrics.
+  - Peak GPU memory tracking per pipeline.
+  - Incremental raw prediction saving to `artifacts/evaluation/phase9_raw_predictions.json`.
+  - Metrics saving to `artifacts/evaluation/phase9_metrics.json`.
+- [x] Unit tests added to `tests/unit/test_evaluation.py` (preserving all Phase 6 behavior; full suite: 120 passed).
+- [x] Final held-out evaluation executed on NVIDIA GeForce RTX 2050 (4 GB VRAM):
+  - Base: Token F1=0.2870, Semantic Sim=0.8641, Mean Latency=8,784ms, Peak VRAM=2,964MB.
+  - RAG: Token F1=0.3159, Semantic Sim=0.8715, Mean Latency=11,837ms, Peak VRAM=3,224MB, Hit@5=100%, MRR=0.7722, Citation Validity=100%.
+  - Fine-Tuned: Token F1=0.3274, Semantic Sim=0.8692, Mean Latency=5,633ms, Peak VRAM=3,059MB, Token Precision=0.3933.
+- [x] Per-question outcome breakdown and qualitative review documented.
+- [x] Experiment EXP-006 recorded in `docs/EXPERIMENT_LOG.md`.
+- [x] Decision D-P09 approved in `docs/DECISIONS.md`.
+
+---
+
 ## Active task
 
-Phase 8 complete — awaiting human approval to begin Phase 9.
+Phase 9 complete — awaiting approval for Phase 10.
 
 ---
 
@@ -98,24 +148,21 @@ None.
 
 ```text
 .venv\Scripts\python.exe -m pytest tests/unit/ -v --tb=short
-  -> 116 passed, 4 warnings in 40.38s
+  -> 120 passed, 4 warnings in 27.71s
 
-.venv-gpu\Scripts\python.exe scripts/train_qlora.py
-  -> Completed 15/15 steps on NVIDIA RTX 2050; train loss: 1.8394, val loss: 1.2016
-
-.venv-gpu\Scripts\python.exe scripts/run_pilot_smoke.py --device cuda
-  -> Completed qualitative Base vs Fine-tuned smoke comparison across 6 questions
+.venv-gpu\Scripts\python.exe scripts/evaluate_three_way.py --device cuda
+  -> Completed Base, RAG, Fine-Tuned inference across 9 held-out items; raw predictions and metrics saved
 ```
 
 ---
 
 ## Next allowed task
 
-> **Phase 9 — Final Comparative Evaluation**
+> **Phase 10 — FastAPI Backend + Persistence**
 >
-> Gate: Human confirms Phase 8 completion and approves start of Phase 9.
-> Tasks: Compare Base, RAG, and Fine-Tuned pipelines across evaluation benchmark with formal comparative metrics.
-> Do NOT begin Phase 9 without explicit approval.
+> Gate: Human confirms Phase 9 completion and approves start of Phase 10.
+> Tasks: Implement REST API for RAG, Fine-Tuned, and Base pipelines, document ingestion endpoints, session persistence, and API schemas.
+> Do NOT begin Phase 10 without explicit approval.
 
 
 ---

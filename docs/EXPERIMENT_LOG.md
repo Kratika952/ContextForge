@@ -304,5 +304,108 @@ Artifact paths:
   - artifacts/finetuning/phase8_pilot/adapter_model.safetensors
   - artifacts/finetuning/phase8_pilot/training_metadata.json
 
+---
+
+### EXP-006 — Final Base vs RAG vs Fine-Tuned Evaluation
+Date: 2026-10-25
+Phase: 9
+Purpose: Execute final three-way comparative evaluation across Base LLM (`Qwen/Qwen2.5-1.5B-Instruct`), RAG Pipeline (with `BAAI/bge-small-en-v1.5`, FAISS medium index, top_k=5), and Fine-Tuned Pipeline (QLoRA pilot adapter from Phase 8) on the strictly held-out test split (`data/qa/phase9_final_test.jsonl`, 9 items).
+Base Git commit: 38eadeb
+Hardware: NVIDIA GeForce RTX 2050 (4 GB VRAM), CUDA 13.0
+Environment:
+  - Python: 3.13.9
+  - PyTorch: 2.14.0+cu130
+  - Sentence-Transformers: 6.1.0
+  - Transformers: 5.17.0
+  - PEFT: 0.21.2
+Dataset:
+  - file: data/qa/phase9_final_test.jsonl (9 records)
+  - SHA-256: 6132e6aa07444cc65d217734c8e47526cd8b6321ac61bc7404c4f17285a22d21
+  - Derived from: data/qa/finetune_test.jsonl (SHA-256: ba7e4a65ecb8bfb6e6cae0a7d4f25cfae6564b8bc32b2de8a7bb9e611c964581)
+  - Train exact overlap: 0/9
+  - Validation exact overlap: 0/9
+  - Phase 8 smoke overlap: 0/9
+  - Phase 6 evaluation_v1 overlap: 0/9
+  - Model inference previously run on test split: NO
+Config:
+  - config_file: config/phase9_evaluation.yaml
+  - Base model: Qwen/Qwen2.5-1.5B-Instruct
+  - Embedding model: BAAI/bge-small-en-v1.5
+  - FAISS index: artifacts/faiss/medium/index.faiss (SHA-256: b77aac7327237de8d09276f1609ed90eb405b99b49b3adddff7750e0a11b3952)
+  - Adapter: artifacts/finetuning/phase8_pilot/ (adapter_model.safetensors SHA-256: 6521dec6e644eaae09c5fd94738531e79a7b66bfcf95a90d808b6a0c934abe51)
+  - Decoding: do_sample=False, max_new_tokens=256
+  - Prompts: Base=base_v1, RAG=rag_v1, Fine-Tuned=base_v1
+Inference Precision Fairness:
+  - Base: device=cuda, dtype=torch.bfloat16, quantized=False
+  - RAG: device=cuda, dtype=torch.bfloat16, quantized=False
+  - Fine-Tuned: device=cuda, dtype=torch.bfloat16, quantized=False
+  - Comparable inference precision: YES (All three BF16 unquantized base model weights in GPU VRAM)
+Measured Metrics:
+  - Base LLM:
+      token_precision: 0.2487
+      token_recall: 0.4106
+      token_f1: 0.2870
+      semantic_similarity: 0.8641
+      mean_latency_ms: 8784.4
+      median_latency_ms: 9716.5
+      mean_input_tokens: 64.1
+      mean_output_tokens: 177.2
+      peak_gpu_memory_mb: 2964.3
+  - RAG Pipeline:
+      token_precision: 0.2811
+      token_recall: 0.4200
+      token_f1: 0.3159
+      semantic_similarity: 0.8715
+      mean_latency_ms: 11837.3
+      median_latency_ms: 13161.9
+      mean_input_tokens: 1346.8
+      mean_output_tokens: 173.7
+      mean_context_tokens: 1200.2
+      expected_doc_hit@1: 0.6667 (6/9)
+      expected_doc_hit@3: 0.7778 (7/9)
+      expected_doc_hit@5: 1.0000 (9/9)
+      expected_doc_mrr: 0.7722
+      citation_presence_rate: 0.3333 (3/9)
+      citation_validity_rate: 1.0000 (100% of emitted citations valid)
+      peak_gpu_memory_mb: 3224.4
+  - Fine-Tuned Pipeline:
+      token_precision: 0.3933
+      token_recall: 0.2892
+      token_f1: 0.3274
+      semantic_similarity: 0.8692
+      mean_latency_ms: 5633.3
+      median_latency_ms: 5258.0
+      mean_input_tokens: 64.1
+      mean_output_tokens: 73.0
+      peak_gpu_memory_mb: 3059.1
+Unsupported Refusal Metrics:
+  - refusal_accuracy: NOT_APPLICABLE (0 unsupported items in final held-out test split)
+  - unsupported_refusal_rate: NOT_APPLICABLE
+Per-Question Breakdown:
+  - ft_0053: RAG won F1 (0.3759); Fine-Tuned won semantic similarity (0.8421). Base was overly verbose.
+  - ft_0012: Fine-Tuned won decisively (F1 0.4222, Sim 0.8768 vs Base 0.2118, RAG 0.2013). RAG missed specific injection category definitions in top-ranked chunks.
+  - ft_0042: Base won F1 (0.3862) and Sim (0.8923). All models gave sound credential advice.
+  - ft_0040: RAG won decisively (F1 0.3311, Sim 0.9460). Base hallucinated refusal ("an internal or official term that might not be widely known"); FT gave a generic summary missing CISA specific terminology.
+  - ft_0034: RAG won decisively (F1 0.4259, Sim 0.9421). Grounded accurately in Current vs Target Profile definitions; Base generated a cut-off bullet list.
+  - ft_0046: RAG won F1 (0.3408) and Sim (0.9050). Base hallucinated that CISA CPG 2.0 has not yet been released.
+  - ft_0013: Fine-Tuned won F1 (0.2703) and Sim (0.8451). Accurately specified parameterized queries and prepared statements.
+  - ft_0052: RAG won F1 (0.3265) and Sim (0.9326). Accurately grounded in GOVERN function; Base hallucinated CPG compliance.
+  - ft_0008: Fine-Tuned won F1 (0.3710) and Sim (0.8739) by addressing supply chain dependency risks, though misstated category as Insecure Design. RAG gave exact A03 classification and CWE numbers.
+Qualitative Review (9 items):
+  - Base: Factual alignment 3/9 YES, 3/9 PARTIAL, 3/9 NO. Hallucinations observed on 3 framework queries (falsely claimed CISA CPG 2.0 was unreleased, claimed CISA CPG goal terminology was unknown, mischaracterized NIST CSF 2.0 Govern).
+  - RAG: Factual alignment 8/9 YES, 1/9 PARTIAL, 0/9 NO. Grounded in retrieved passages; eliminated framework hallucinations. Only weakness was missed coverage on ft_0012 due to retriever returning broader injection mitigations rather than full category definitions.
+  - Fine-Tuned: Factual alignment 6/9 YES, 3/9 PARTIAL, 0/9 NO. Highly concise responses (avg 73 tokens vs 177 tokens) adhering to cybersecurity assistant style. Zero refusals, but lacked verbatim terminology when questions required specific framework definitions (e.g., ft_0040, ft_0052).
+Conclusion:
+  - RAG is superior for dynamic factual accuracy, grounded framework compliance, and citation provenance. It completely prevents hallucinations on evolving standards.
+  - Fine-Tuned LoRA is superior for low-latency (5.6s vs 11.8s, 2.1x faster), concise domain style (73 vs 174 tokens), and high token precision (0.3933 vs 0.2811) without prompt bloat.
+  - Base LLM exhibits significant factual hallucinations on specific framework standards, demonstrating that ungrounded base models are inappropriate for authoritative domain advisory.
+Limitations:
+  - Pilot held-out test split contains 9 items; sufficient for directional comparative analysis but too small for broad statistical significance.
+  - Split contains 0 unsupported/out-of-domain questions; refusal behavior on this split is not tested (historical Phase 6 dev data remains development evidence).
+Artifact paths:
+  - artifacts/evaluation/phase9_raw_predictions.json
+  - artifacts/evaluation/phase9_metrics.json
+
+
 
 

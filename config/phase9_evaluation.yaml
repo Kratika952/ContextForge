@@ -1,0 +1,37 @@
+# ContextForge — Phase 9 Final Comparative Evaluation Configuration
+# ===================================================================
+# Immutable frozen parameters for the three-way benchmark.
+
+evaluation:
+  dataset_path: "data/qa/phase9_final_test.jsonl"
+  dataset_sha256: "6132e6aa07444cc65d217734c8e47526cd8b6321ac61bc7404c4f17285a22d21"
+  source_dataset_path: "data/qa/finetune_test.jsonl"
+  source_dataset_sha256: "ba7e4a65ecb8bfb6e6cae0a7d4f25cfae6564b8bc32b2de8a7bb9e611c964581"
+  num_test_records: 9
+  output_raw_predictions_path: "artifacts/evaluation/phase9_raw_predictions.json"
+  output_metrics_path: "artifacts/evaluation/phase9_metrics.json"
+
+models:
+  base_model_id: "Qwen/Qwen2.5-1.5B-Instruct"
+  embedding_model_id: "BAAI/bge-small-en-v1.5"
+  adapter_path: "artifacts/finetuning/phase8_pilot"
+  adapter_weights_sha256: "6521dec6e644eaae09c5fd94738531e79a7b66bfcf95a90d808b6a0c934abe51"
+
+retrieval:
+  faiss_index_path: "artifacts/faiss/medium/index.faiss"
+  faiss_index_sha256: "b77aac7327237de8d09276f1609ed90eb405b99b49b3adddff7750e0a11b3952"
+  chunk_profile: "medium"
+  chunk_size_tokens: 300
+  chunk_overlap_tokens: 50
+  index_chunk_count: 394
+  top_k: 5
+  max_context_tokens: 1500
+
+prompts:
+  base_prompt_version: "base_v1"
+  rag_prompt_version: "rag_v1"
+  finetuned_prompt_version: "base_v1"
+
+generation:
+  do_sample: false
+  max_new_tokens: 256
