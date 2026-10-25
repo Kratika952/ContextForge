@@ -5,9 +5,25 @@
 
 ---
 
-## Current phase: 9 — COMPLETE
+## Current phase: 10 — COMPLETE
 
 **Status:** COMPLETE
+
+---
+
+## Phase 10 acceptance criteria
+
+| Criterion | Status |
+|---|---|
+| FastAPI backend created with `/health` and `/ask` endpoints (`src/contextforge/api/main.py`) | VERIFIED |
+| Request/response validation schemas implemented via Pydantic (`src/contextforge/api/schemas.py`) | VERIFIED |
+| Lazy pipeline manager with single-resident model and GPU memory cleanup (`PipelineManager`) | VERIFIED |
+| SQLite persistence for queries, responses, and fine-grained retrieval events (`QueryResultRepository`) | VERIFIED |
+| Full unit test suite passes with mocked pipelines (131 passed, 0 failed in `tests/unit/test_api.py`) | VERIFIED |
+| Real local server smoke test executed on CUDA across Base, RAG, and Fine-Tuned (`scripts/smoke_api.py`) | VERIFIED |
+| Zero CUDA OOM during pipeline switching on NVIDIA RTX 2050 (4 GB VRAM) | VERIFIED |
+| SQLite database verified with stored queries, responses, and RAG retrieval events (`scripts/inspect_db_results.py`) | VERIFIED |
+| Decision D-P10 approved in `docs/DECISIONS.md` | VERIFIED |
 
 ---
 
@@ -27,6 +43,7 @@
 | Detailed per-question and qualitative review completed | VERIFIED |
 | Experiment EXP-006 recorded in `docs/EXPERIMENT_LOG.md` | VERIFIED |
 | Decision D-P09 approved in `docs/DECISIONS.md` | VERIFIED |
+
 
 ---
 
@@ -132,9 +149,33 @@
 
 ---
 
+## Phase 10 — FastAPI Backend + Persistence
+
+**Status:** COMPLETE
+
+### Completed
+
+- [x] FastAPI application implemented (`src/contextforge/api/main.py`) exposing `GET /health` and `POST /ask`.
+- [x] Pydantic request/response schemas created (`src/contextforge/api/schemas.py`) validating non-empty input and strict pipeline literal (`base`, `rag`, `finetuned`).
+- [x] Single-resident model lifecycle manager implemented (`src/contextforge/api/pipeline_manager.py`) with lazy loading, caching between repeated calls, and safe GPU memory reclamation (`gc.collect()`, `torch.cuda.empty_cache()`, `ipc_collect()`).
+- [x] SQLite schema extended (`src/contextforge/storage/schema.sql`) with `queries`, `responses`, and `retrieval_events` tables.
+- [x] Repository layer extended (`src/contextforge/storage/repositories.py`) with `QueryResultRepository` supporting atomic query + result + source persistence.
+- [x] Cross-thread SQLite support enabled (`check_same_thread=False` in `src/contextforge/storage/db.py`).
+- [x] Unit test suite implemented (`tests/unit/test_api.py`) covering health check, Base/RAG/Fine-Tuned requests, validation errors, load failures, inference exceptions, persistence verification, and pipeline manager isolation (131 total unit tests passing).
+- [x] Live smoke verification executed on NVIDIA GeForce RTX 2050 (4 GB VRAM) via `scripts/smoke_api.py`:
+  - `GET /health` -> 200 OK
+  - `POST /ask base` -> 200 OK (latency: 65.7s, sources: 0)
+  - `POST /ask rag` -> 200 OK (latency: 17.7s, sources: 5)
+  - `POST /ask finetuned` -> 200 OK (latency: 30.8s, sources: 0)
+  - Zero CUDA OOM or memory fragmentation during live pipeline switching.
+- [x] SQLite persistence verified via `scripts/inspect_db_results.py`: stored queries, responses, and 5 granular RAG retrieval events traceable to chunk IDs.
+- [x] Decision D-P10 approved in `docs/DECISIONS.md`.
+
+---
+
 ## Active task
 
-Phase 9 complete — awaiting approval for Phase 10.
+Phase 10 complete — awaiting approval for Phase 11.
 
 ---
 
@@ -148,21 +189,25 @@ None.
 
 ```text
 .venv\Scripts\python.exe -m pytest tests/unit/ -v --tb=short
-  -> 120 passed, 4 warnings in 27.71s
+  -> 131 passed, 5 warnings in 141.37s
 
-.venv-gpu\Scripts\python.exe scripts/evaluate_three_way.py --device cuda
-  -> Completed Base, RAG, Fine-Tuned inference across 9 held-out items; raw predictions and metrics saved
+.venv-gpu\Scripts\python.exe scripts/smoke_api.py
+  -> Live FastAPI smoke test: /health, Base (200), RAG (200, 5 sources), Fine-Tuned (200)
+
+.venv-gpu\Scripts\python.exe scripts/inspect_db_results.py
+  -> Verified SQLite persistence: queries, responses, and 5 retrieval events
 ```
 
 ---
 
 ## Next allowed task
 
-> **Phase 10 — FastAPI Backend + Persistence**
+> **Phase 11 — Streamlit Frontend**
 >
-> Gate: Human confirms Phase 9 completion and approves start of Phase 10.
-> Tasks: Implement REST API for RAG, Fine-Tuned, and Base pipelines, document ingestion endpoints, session persistence, and API schemas.
-> Do NOT begin Phase 10 without explicit approval.
+> Gate: Human confirms Phase 10 completion and approves start of Phase 11.
+> Tasks: Implement interactive Streamlit UI with pipeline selection (Base, RAG, Fine-Tuned), citation display, latency reporting, and evaluation dashboard.
+> Do NOT begin Phase 11 without explicit approval.
+
 
 
 ---

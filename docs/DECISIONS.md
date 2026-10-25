@@ -136,6 +136,16 @@ Constraints: <any limits or conditions>
   - **ContextForge Architectural Recommendation:** Maintain both RAG and Fine-Tuned pipelines as distinct modular capabilities in Phase 10 (FastAPI backend). RAG serves as the primary route for factual compliance, document queries, and audit-ready citation provenance; Fine-Tuned serves as the low-latency route for concise domain interaction.
 - **Constraints & Limitations:** Benchmark evaluated on 9 strictly held-out domain items without synthetic generation or prompt leakage. Sample size is appropriate for directional architecture validation but too small for broad statistical generalization. No unsupported questions were in the held-out split.
 
+### D-P10 — FastAPI backend architecture and GPU-safe pipeline lifecycle
+
+- **Phase:** 10 (PHASE_10_DECISION)
+- **Status:** APPROVED (2026-10-25)
+- **Decision:** Expose Base, RAG, and Fine-Tuned inference pipelines via a lightweight FastAPI backend (`/health` and `/ask`) backed by SQLite query and retrieval event persistence:
+  - **Lifecycle Strategy:** Implemented `PipelineManager` with single-resident model caching and explicit GPU memory reclamation. On the 4 GB VRAM NVIDIA RTX 2050, heavyweight Qwen instances are loaded lazily and cached between consecutive calls to the same pipeline. Switching pipelines triggers explicit unloading (`self._current_instance = None`, `gc.collect()`, `torch.cuda.empty_cache()`, `torch.cuda.ipc_collect()`) before instantiating the new pipeline.
+  - **Zero Heavyweight Reloading in /health:** `GET /health` verifies database connectivity and reports operational status without loading Qwen weights into VRAM.
+  - **Normalized Persistence:** SQLite schema expanded to persist incoming user queries (`queries`), standardized outputs (`responses`), and fine-grained citation sources (`retrieval_events`), guaranteeing full traceability back to ingested corpus chunks.
+- **Outcome:** Verified in Phase 10 smoke and unit tests (131 tests passing). Sequential Base -> RAG -> Fine-Tuned execution executed smoothly without CUDA OOM or memory fragmentation.
+
 ---
 
 ## Phase 1 Decisions

@@ -14,11 +14,15 @@ from contextforge.common.config import get_db_path
 _SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
 
-def get_connection(db_path: Path | str | None = None) -> sqlite3.Connection:
+def get_connection(
+    db_path: Path | str | None = None,
+    check_same_thread: bool = False,
+) -> sqlite3.Connection:
     """Open a connection to the ContextForge SQLite database.
 
     Args:
         db_path: Path to database file, or ':memory:', or None (uses config default).
+        check_same_thread: If False, allows SQLite connection across worker threads.
 
     Returns:
         sqlite3.Connection with row_factory=sqlite3.Row and foreign keys enabled.
@@ -32,9 +36,9 @@ def get_connection(db_path: Path | str | None = None) -> sqlite3.Connection:
 
     if isinstance(target, Path):
         target.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(str(target))
+        conn = sqlite3.connect(str(target), check_same_thread=check_same_thread)
     else:
-        conn = sqlite3.connect(target)
+        conn = sqlite3.connect(target, check_same_thread=check_same_thread)
 
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
@@ -58,16 +62,20 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
             conn.execute("ALTER TABLE chunks ADD COLUMN metadata_json TEXT NOT NULL DEFAULT '{}';")
 
 
-def init_db(db_path: Path | str | None = None) -> sqlite3.Connection:
+def init_db(
+    db_path: Path | str | None = None,
+    check_same_thread: bool = False,
+) -> sqlite3.Connection:
     """Initialize database tables according to schema.sql.
 
     Args:
         db_path: Path to database file, or ':memory:', or None.
+        check_same_thread: If False, allows SQLite connection across worker threads.
 
     Returns:
         Initialized sqlite3.Connection.
     """
-    conn = get_connection(db_path)
+    conn = get_connection(db_path, check_same_thread=check_same_thread)
     _migrate_schema(conn)
     with open(_SCHEMA_PATH, "r", encoding="utf-8") as f:
         schema_sql = f.read()
@@ -75,3 +83,4 @@ def init_db(db_path: Path | str | None = None) -> sqlite3.Connection:
     conn.executescript(schema_sql)
     conn.commit()
     return conn
+

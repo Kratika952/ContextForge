@@ -1,6 +1,17 @@
 """Storage package for ContextForge."""
 
 from contextforge.storage.db import get_connection, init_db
-from contextforge.storage.repositories import DocumentRepository
+from contextforge.storage.repositories import (
+    ChunkRepository,
+    DocumentRepository,
+    QueryResultRepository,
+)
 
-__all__ = ["DocumentRepository", "get_connection", "init_db"]
+__all__ = [
+    "ChunkRepository",
+    "DocumentRepository",
+    "QueryResultRepository",
+    "get_connection",
+    "init_db",
+]
+
