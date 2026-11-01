@@ -1,138 +1,251 @@
 # ContextForge
 
-> **Domain-specific QA system** comparing three inference paths:
-> Base LLM · RAG · Fine-tuned LLM (LoRA/QLoRA)
+> **Domain-Specific AI Knowledge Assistant** — comparing Base LLM, RAG, and QLoRA Fine-Tuned LLM for question answering over trusted enterprise knowledge.
+
+**Current Domain:** Cybersecurity  
+**Trusted Corpus:** OWASP Top 10:2025 · NIST CSF 2.0 · CISA CPG 2.0
+
+---
+
+## Why ContextForge
+
+Organizations maintain large volumes of policies, frameworks, manuals, and technical standards. Employees waste significant time searching these documents manually. ContextForge enables **natural-language question answering** over trusted knowledge sources and provides a rigorous comparison of three increasingly sophisticated approaches.
+
+---
 
 ## Research Question
 
-For domain-specific question answering, how do a base pretrained LLM,
-retrieval-augmented generation, and parameter-efficient fine-tuning compare
-in answer quality, groundedness/hallucination behaviour, retrieval quality,
-latency, and resource requirements?
+For domain-specific question answering, how do:
+
+1. **Base LLM** (zero-shot pretrained model)
+2. **RAG** (retrieval-augmented generation with dense FAISS retrieval)
+3. **QLoRA Fine-Tuned LLM** (parameter-efficient adapter training on domain QA pairs)
+
+compare in answer quality, document grounding, retrieval effectiveness, latency, and resource requirements?
 
 ---
 
-## Project Status
+## Architecture
 
-**Phase 6 — Evaluation Harness v1** (COMPLETE, awaiting Phase 7 approval)
+```
+User
+ ↓
+Streamlit UI (src/contextforge/ui/app.py)
+ ↓  HTTP
+FastAPI Backend (src/contextforge/api/main.py)
+ ↓
+Pipeline Manager (lazy load, single-resident GPU model)
+ ↓
+┌──────────────┬────────────────────┬───────────────────────┐
+│  Base LLM    │   RAG Pipeline     │  Fine-Tuned Pipeline  │
+│  (Qwen2.5)   │  FAISS → Context   │  Qwen2.5 + LoRA      │
+│              │  → Qwen2.5         │  adapter              │
+└──────┬───────┴────────┬───────────┴───────────┬───────────┘
+       └────────────────┴───────────────────────┘
+                        ↓
+                  AnswerResult
+                        ↓
+                  SQLite Persistence
+```
 
-See [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) for the current execution state.
-
----
-
-## Baseline LLM Inference
-
-- **Base Model:** `Qwen/Qwen2.5-1.5B-Instruct` (Apache-2.0, ~1.54B parameters)
-- **Prompt Version:** `base_v1` (concise defensive cybersecurity persona, zero document access claims)
-- **Generation Strategy:** Deterministic greedy decoding (`do_sample: false`, temperature/top_p omitted)
-- **Runtime Strategy:** Auto device placement (CUDA or CPU), `torch.bfloat16` precision, eval mode, loaded once per service/process.
-- **Inference CLI:**
-  ```bash
-  python scripts/run_base.py "What is broken access control?"
-  ```
-
----
-
-## RAG Pipeline Inference
-
-- **Embedding Model:** `BAAI/bge-small-en-v1.5` (384 dimensions, L2-normalized)
-- **Vector Store:** FAISS IndexFlatIP (medium chunk profile: 300 tokens, 50 overlap)
-- **Retriever:** `DenseRetriever` with SQLite chunk metadata
-- **Context Formatter:** Standardized `[SOURCE_1]`, `[SOURCE_2]` labels with 1500-token context budget
-- **Prompt Version:** `rag_v1` with prompt-injection defense and groundedness constraints
-- **Generator:** `Qwen/Qwen2.5-1.5B-Instruct` (greedy, deterministic)
-- **Citation Validator:** Validates cited labels against retrieved chunks; identifies invalid labels
-- **Inference CLI:**
-  ```bash
-  python scripts/run_rag.py "What is broken access control?"
-  ```
-- **Comparison CLI:**
-  ```bash
-  python scripts/compare_base_rag.py "What are the official ten vulnerability categories defined in OWASP Top 10:2025?"
-  ```
+**RAG retrieval path:**
+Question → BGE Embedding → FAISS IndexFlatIP → Top-K Chunks → Formatted Context → Qwen2.5 Generation → Citation Validation
 
 ---
 
-## Technology Stack
+## Tech Stack
 
 | Layer | Technology |
 |---|---|
 | Language | Python ≥ 3.10 |
 | ML / DL | PyTorch |
-| LLM runtime | Hugging Face Transformers (`Qwen/Qwen2.5-1.5B-Instruct`) |
-| Embeddings | Sentence Transformers (`BAAI/bge-small-en-v1.5`) |
-| Vector search | FAISS (`IndexFlatIP`) |
-| Fine-tuning | PEFT + TRL + LoRA/QLoRA |
-| Quantization | bitsandbytes (where supported) |
-| Dataset utilities | Hugging Face Datasets + Pandas |
-| PDF extraction | PyMuPDF |
-| Backend API | FastAPI |
-| App database | SQLite |
+| LLM Runtime | Hugging Face Transformers (`Qwen/Qwen2.5-1.5B-Instruct`) |
+| Embeddings | Sentence Transformers (`BAAI/bge-small-en-v1.5`, 384-dim) |
+| Vector Search | FAISS (`IndexFlatIP`, exact cosine via L2-normalized embeddings) |
+| Fine-Tuning | PEFT + TRL + LoRA/QLoRA |
+| Dataset Utilities | Hugging Face Datasets + Pandas |
+| PDF Extraction | PyMuPDF |
+| Backend API | FastAPI + Uvicorn |
+| Persistence | SQLite |
 | Frontend | Streamlit |
-| Metrics | scikit-learn + custom evaluation |
-| Visualisations | Matplotlib |
 | Testing | pytest |
-| Configuration | env vars + YAML/JSON config |
+| Configuration | YAML + environment variables |
 
 ---
 
-## Quickstart
+## Models
+
+| Role | Model | Notes |
+|---|---|---|
+| Base / Generation LLM | `Qwen/Qwen2.5-1.5B-Instruct` | 1.54B params, Apache-2.0, BF16 |
+| Embedding Model | `BAAI/bge-small-en-v1.5` | 384-dim, L2-normalized |
+| Fine-Tuned Adapter | QLoRA pilot (LoRA rank 16) | 38 train examples, 8 val, 9 test |
+
+---
+
+## Final Research Results
+
+> **Benchmark:** 9 held-out supported cybersecurity questions, BF16 precision, CUDA, sequential pipeline execution.
+
+| Metric | Base LLM | RAG | Fine-Tuned |
+|---|---|---|---|
+| **Token F1** | 0.2870 | 0.3159 | **0.3274** |
+| **Semantic Similarity** | 0.8641 | **0.8715** | 0.8692 |
+| **Mean Latency (ms)** | 8784.4 | 11837.3 | **5633.3** |
+
+**RAG Retrieval Quality:**
+
+| Metric | Value |
+|---|---|
+| Hit@5 | 1.0000 |
+| MRR | 0.7722 |
+| Citation Presence | 0.3333 |
+| Citation Validity (emitted) | 1.0000 |
+
+**Interpretation:**
+
+- **Fine-Tuned** achieved the highest token F1 (0.3274) and lowest mean latency (5633.3 ms), producing concise domain-adapted answers.
+- **RAG** achieved the highest semantic similarity (0.8715) and provides explicit document grounding with 100% citation validity on emitted citations.
+- **Base LLM** serves as the unadapted comparison baseline.
+- No single method dominated across all questions.
+
+---
+
+## Limitations
+
+- Final held-out benchmark contains only **9 supported cybersecurity questions** — insufficient for production-level statistical validation.
+- No unsupported/out-of-domain items in the Phase 9 benchmark (refusal metrics = NOT_APPLICABLE).
+- Pilot fine-tuning dataset: only **38 training examples** (55 total QA pairs).
+- Evaluated on a single GPU (NVIDIA RTX 2050, 4 GB VRAM) with CPU/GPU resource constraints.
+- Results represent a **research prototype**, not production-level validation.
+
+---
+
+## Project Structure
+
+```
+ContextForge/
+├── config/                # YAML configuration (model, RAG, finetune, evaluation)
+├── data/                  # Corpus manifests, QA splits (raw docs gitignored)
+├── docs/                  # Architecture, decisions, experiments, project state
+├── notebooks/             # Phase 8 QLoRA pilot notebook
+├── scripts/               # CLI entry points (ingest, build_index, train, evaluate, smoke tests)
+├── src/contextforge/      # Python package (src layout)
+│   ├── api/               # FastAPI backend (main, schemas, pipeline_manager)
+│   ├── common/            # Shared types, config, error hierarchy
+│   ├── evaluation/        # Token F1, semantic similarity, retrieval metrics
+│   ├── ingestion/         # PDF/Markdown loaders, text cleaner, token-aware chunker
+│   ├── llm/               # Model loader, prompts, generation wrapper
+│   ├── pipelines/         # BasePipeline, RagPipeline, FineTunedPipeline
+│   ├── retrieval/         # BGE embedder, FAISS vector store, dense retriever
+│   ├── storage/           # SQLite schema, repositories
+│   └── ui/                # Streamlit frontend, HTTP client
+├── tests/
+│   ├── unit/              # 145 unit tests
+│   └── integration/       # End-to-end tests
+├── artifacts/             # FAISS indices, adapters, evaluation results (gitignored)
+├── pyproject.toml         # Project metadata and dependencies
+└── README.md
+```
+
+---
+
+## Setup
 
 ```bash
-# 1. Clone the repository
-git clone <repo-url>
+# 1. Clone
+git clone https://github.com/Kratika952/ContextForge.git
 cd ContextForge
 
-# 2. Create and activate a virtual environment
+# 2. Create virtual environment
 python -m venv .venv
+
 # Windows
 .venv\Scripts\activate
 # macOS / Linux
 source .venv/bin/activate
 
-# 3. Install the package in editable mode (dev extras)
+# 3. Install in editable mode with dev dependencies
 pip install -e ".[dev]"
 
-# 4. Ingest authoritative corpus
+# 4. (First time) Ingest corpus documents
 python scripts/ingest.py data/raw/nist-csf-2.0.pdf
 python scripts/ingest.py data/raw/cisa-cpg-2.0.pdf
 python scripts/ingest.py data/raw/owasp-top10-2025
 
-# 5. Build FAISS dense retrieval indices
+# 5. Build FAISS retrieval index
 python scripts/build_index.py --profile medium
+```
 
-# 6. Run semantic search
-python scripts/search.py "What is the NIST CSF Govern function?"
+> **GPU Note:** For CUDA inference and fine-tuning, install PyTorch with CUDA support separately before `pip install -e ".[dev]"`. A separate `.venv-gpu` environment may be used for GPU workloads.
 
-# 7. Run baseline LLM inference
-python scripts/run_base.py "What is broken access control?"
+---
 
-# 8. Run test suite
-pytest -v
+## Run Backend
+
+```bash
+python -m uvicorn contextforge.api.main:app --host 127.0.0.1 --port 8000
 ```
 
 ---
 
-## Repository Layout
+## Run Frontend
 
+```bash
+streamlit run src/contextforge/ui/app.py --server.port 8501
 ```
-ContextForge/
-├── docs/                  # Implementation plan, decisions, state, experiment log
-├── config/                # project.yaml, rag.yaml, model.yaml
-├── src/contextforge/      # Python package (src layout)
-│   ├── common/            # Shared types, config, error hierarchy
-│   ├── ingestion/         # PDF, Markdown loaders, text cleaner, token-aware chunker
-│   ├── storage/           # SQLite schema, db connection manager, repositories
-│   ├── retrieval/         # BGE embedder, FAISS vector store, dense retriever
-│   ├── llm/               # Model loader, prompts, generation wrapper
-│   └── pipelines/         # BasePipeline (and future RagPipeline)
-├── tests/                 # pytest test suite
-│   ├── unit/              # Isolated unit tests with mocked models
-│   └── integration/       # End-to-end retrieval and live LLM tests
-├── data/                  # Corpora, manifests, and QA splits
-├── artifacts/             # FAISS indexes, adapters, evaluation logs (gitignored)
-└── scripts/               # CLI entry points (ingest, build_index, search, run_base)
+
+The Streamlit UI provides:
+- Pipeline selector (Base / RAG / Fine-Tuned)
+- Question input with Ask action
+- Answer display with latency and token usage
+- RAG source documents with relevance scores
+- Research Results dashboard with frozen Phase 9 metrics
+
+---
+
+## Run Tests
+
+```bash
+python -m pytest tests/unit/ -v --tb=short
 ```
+
+Expected: **145 passed**, 0 failed.
+
+---
+
+## Evaluation
+
+Phase 9 evaluation artifacts are stored in `artifacts/evaluation/`:
+- `phase9_metrics.json` — aggregate metrics for all three pipelines
+- `phase9_raw_predictions.json` — per-question predictions and scores
+
+These are frozen results from a completed evaluation. **Do not rerun** — the evaluation script (`scripts/evaluate_three_way.py`) requires CUDA and the full model/index/adapter stack.
+
+---
+
+## Security Scope
+
+ContextForge answers questions about **defensive cybersecurity** frameworks and best practices only.
+
+**Out of scope** (and actively refused):
+- Malware creation or analysis for offensive purposes
+- Exploit generation or weaponization
+- Credential theft techniques
+- Phishing automation
+- Any destructive or offensive automation
+
+---
+
+## Future Work
+
+- Larger fine-tuning dataset (hundreds of grounded QA pairs)
+- Larger held-out benchmark (50+ diverse questions including OOD/refusal items)
+- Retrieval reranking (cross-encoder or ColBERT)
+- Improved citation generation in RAG answers
+- Multi-domain evaluation (compliance, healthcare, legal)
+- Deployment optimization (quantization, model caching, batched inference)
+- Production model lifecycle and versioning
 
 ---
 
@@ -140,6 +253,9 @@ ContextForge/
 
 | Document | Purpose |
 |---|---|
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System architecture reference |
+| [`docs/DEMO_GUIDE.md`](docs/DEMO_GUIDE.md) | Step-by-step demo walkthrough |
+| [`docs/PROJECT_SUMMARY.md`](docs/PROJECT_SUMMARY.md) | Portfolio-oriented project summary |
 | [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) | Phase-by-phase technical plan |
 | [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) | Current execution state |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Approved architecture decisions |
@@ -158,12 +274,12 @@ ContextForge/
 | 4 | Base LLM Pipeline | **COMPLETE** |
 | 5 | RAG Pipeline | **COMPLETE** |
 | 6 | Evaluation Harness v1 | **COMPLETE** |
-| 7 | Fine-Tuning Dataset Preparation | PLANNED |
-| 8 | QLoRA Fine-Tuning | PLANNED |
-| 9 | Full Evaluation (3-way) | PLANNED |
-| 10 | FastAPI Backend | PLANNED |
-| 11 | Streamlit Frontend | PLANNED |
-| 12 | Reporting and Packaging | PLANNED |
+| 7 | Fine-Tuning Dataset Preparation | **COMPLETE** |
+| 8 | QLoRA Fine-Tuning | **COMPLETE** |
+| 9 | Full Three-Way Evaluation | **COMPLETE** |
+| 10 | FastAPI Backend | **COMPLETE** |
+| 11 | Streamlit Frontend | **COMPLETE** |
+| 12 | Hardening, Documentation, Demo Release | **COMPLETE** |
 
 ---
 

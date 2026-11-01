@@ -5,9 +5,42 @@
 
 ---
 
-## Current phase: 11 — COMPLETE
+## Current phase: 12 — COMPLETE
 
-**Status:** COMPLETE
+**Status:** CONTEXTFORGE MVP / RESEARCH PROTOTYPE COMPLETE (Phases 0–12 Complete)
+
+---
+
+## Phase 12 acceptance criteria
+
+| Criterion | Status |
+|---|---|
+| Final repository audit performed (clean structure, verified commit history) | VERIFIED |
+| Portfolio-ready README overhaul completed with problem, architecture, stack, frozen Phase 9 results, setup, and safety scope | VERIFIED |
+| Comprehensive architecture document created (`docs/ARCHITECTURE.md`) covering all 10 system layers and components | VERIFIED |
+| Step-by-step demo guide created (`docs/DEMO_GUIDE.md`) with safe non-benchmark walkthroughs | VERIFIED |
+| Executive project summary created (`docs/PROJECT_SUMMARY.md`) for technical reviewers and recruiters | VERIFIED |
+| Installation reproducibility verified in `pyproject.toml` (all runtime and PEFT dependencies declared) | VERIFIED |
+| Cleanup audit completed (no stale temporary scripts or data leaks) | VERIFIED |
+| Documented test commands verified (145 passed, 0 failed across all unit test suites) | VERIFIED |
+| Full system verified: Base, RAG, Fine-Tuned, FastAPI, SQLite, Streamlit with zero CUDA OOM | VERIFIED |
+| Final project state updated and sealed (no further phases allowed) | VERIFIED |
+
+---
+
+## Final Verified System Includes
+- **Document Ingestion:** PyMuPDF extraction, section metadata mapping, SHA-256 deduplication
+- **Chunking Engine:** Structural + semantic chunking (size=500, overlap=50)
+- **Embeddings & Vector Search:** BAAI/bge-small-en-v1.5, L2-normalized exact cosine similarity, FAISS IndexFlatIP
+- **Base Pipeline:** Zero-shot Qwen/Qwen2.5-1.5B-Instruct baseline with defensive cybersecurity persona
+- **RAG Pipeline:** Dense retrieval + context formatter with [SOURCE_N] labels + grounded generation + citation verification
+- **QLoRA Fine-Tuned Pipeline:** PEFT low-rank adapter (rank 16) trained on domain QA pairs
+- **Three-Way Offline Evaluation:** Token F1, semantic similarity, latency, Hit@K, MRR, citation validity
+- **FastAPI Backend:** Asynchronous REST endpoints (`/health`, `/ask`), Pydantic validation schemas
+- **SQLite Persistence:** Atomic storage of queries, generated answers, latencies, and retrieval events
+- **GPU Pipeline Manager:** Lazy-loading single-resident model manager with explicit cache eviction and garbage collection
+- **Streamlit Frontend:** Decoupled HTTP interface, real-time metrics, source inspector, and static research dashboard
+- **Documentation & Demo Guide:** Comprehensive README, architecture specification, walkthrough demo, and project summary
 
 ---
 
