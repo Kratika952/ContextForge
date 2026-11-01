@@ -16,10 +16,21 @@ license = { text = "MIT" }
 # ── Core dependencies (Phase 0 — only what is needed NOW) ──────────────────
 # Later phases will extend this list after the human approves each addition.
 dependencies = [
-    # No runtime dependencies in Phase 0 — the package is a skeleton.
-    # Phase 3+ will add: torch, transformers, sentence-transformers, faiss-cpu, peft, trl,
-    #                    datasets, pandas, pymupdf, fastapi, uvicorn, streamlit,
-    #                    scikit-learn, matplotlib, python-dotenv, pyyaml
+    "torch>=2.0.0",
+    "transformers>=4.40.0",
+    "sentence-transformers>=3.0.0",
+    "faiss-cpu>=1.8.0",
+    "peft>=0.10.0",
+    "trl>=0.8.0",
+    "datasets>=2.18.0",
+    "pandas>=2.0.0",
+    "pymupdf>=1.24.0",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.28.0",
+    "pydantic>=2.0.0",
+    "streamlit>=1.30.0",
+    "httpx>=0.27.0",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]

@@ -5,9 +5,29 @@
 
 ---
 
-## Current phase: 10 — COMPLETE
+## Current phase: 11 — COMPLETE
 
 **Status:** COMPLETE
+
+---
+
+## Phase 11 acceptance criteria
+
+| Criterion | Status |
+|---|---|
+| Streamlit frontend application implemented (`src/contextforge/ui/app.py`) | VERIFIED |
+| Decoupled HTTP client implemented communicating strictly via FastAPI (`ContextForgeClient`) | VERIFIED |
+| Strict architectural isolation verified (no direct ML models, adapters, FAISS, or CUDA imports in UI) | VERIFIED |
+| Configurable backend URL via `CONTEXTFORGE_API_URL` environment variable and UI sidebar | VERIFIED |
+| Pipeline selector implemented supporting Base, RAG, and Fine-Tuned inference modes | VERIFIED |
+| User question input, Ask action, loading spinner, and explicit error handling (connection, API, validation) | VERIFIED |
+| Real-time latency, model ID, and token usage metadata displayed with answers | VERIFIED |
+| RAG retrieved sources display with document ID, title, section, relevance score, and text excerpt | VERIFIED |
+| Research Results dashboard displaying frozen Phase 9 three-way evaluation metrics and scientific interpretations | VERIFIED |
+| Benchmark limitation banner clearly displayed (9 held-out supported questions only; no misleading accuracy labels) | VERIFIED |
+| Comprehensive frontend and client unit tests passing (145 passed, 0 failed across 20 test modules) | VERIFIED |
+| Local integration smoke passed on CUDA (`scripts/smoke_phase11.py`) across Base, RAG, Fine-Tuned, and Research Results with zero CUDA OOM | VERIFIED |
+| Next allowed phase: Phase 12 — Hardening, Documentation, and Demo Release | VERIFIED |
 
 ---
 
