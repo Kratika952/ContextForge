@@ -13,7 +13,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from contextforge.ui.app import FROZEN_PHASE9_METRICS, PIPELINE_OPTIONS
+from contextforge.ui.app import (
+    FROZEN_PHASE9_METRICS,
+    PIPELINE_OPTIONS,
+    collapse_display_sources,
+    extract_response_metrics,
+    extract_source_metadata,
+)
 from contextforge.ui.client import (
     ApiConnectionError,
     ApiError,
@@ -210,3 +216,165 @@ class TestFrozenPhase9Metrics:
             "RAG Pipeline": "rag",
             "Fine-Tuned LLM": "finetuned",
         }
+
+
+class TestSourceMetadataExtraction:
+    """Validate extraction of real metadata without fake 'Unknown' or 'N/A' placeholders."""
+
+    def test_extract_real_document_id_and_title(self):
+        """extract_source_metadata resolves real document_id and title from metadata."""
+        src = {
+            "chunk_id": "nist-csf-20_medium_0062",
+            "document_id": "nist-csf-20",
+            "text": "The Govern function informs risk management.",
+            "score": 0.8842,
+            "rank": 1,
+            "source_label": "[nist-csf-20-P27]",
+            "metadata": {
+                "document_title": "The NIST Cybersecurity Framework (CSF) 2.0",
+                "page_start": 27,
+                "page_end": 27,
+                "section_heading": None,
+            },
+        }
+        info = extract_source_metadata(src)
+        assert info["doc_id"] == "nist-csf-20"
+        assert info["title"] == "The NIST Cybersecurity Framework (CSF) 2.0"
+        assert info["source_label"] == "[nist-csf-20-P27]"
+        assert info["score"] == 0.8842
+        assert info["excerpt"] == "The Govern function informs risk management."
+        assert info["page"] == "27"
+        assert info["section"] is None  # no fake "N/A"
+
+    def test_extract_page_range(self):
+        """Multi-page chunks format as page ranges."""
+        src = {
+            "chunk_id": "cisa_01",
+            "document_id": "cisa-cpg-20",
+            "text": "CPG guidelines excerpt.",
+            "metadata": {"page_start": 7, "page_end": 8},
+        }
+        info = extract_source_metadata(src)
+        assert info["page"] == "7–8"
+
+    def test_extract_section_when_present(self):
+        """Real section heading is extracted; literal 'N/A' or 'None' is omitted."""
+        src_with_sec = {
+            "document_id": "owasp-top-10",
+            "text": "A01: Broken Access Control",
+            "metadata": {"section_heading": "A01:2025 - Broken Access Control"},
+        }
+        info = extract_source_metadata(src_with_sec)
+        assert info["section"] == "A01:2025 - Broken Access Control"
+
+        src_na_sec = {
+            "document_id": "owasp-top-10",
+            "text": "A01 text",
+            "metadata": {"section_heading": "N/A"},
+        }
+        assert extract_source_metadata(src_na_sec)["section"] is None
+
+    def test_fallback_when_title_absent(self):
+        """Falls back to document_id if document_title is missing."""
+        src = {
+            "document_id": "nist-csf-20",
+            "text": "Excerpt",
+            "metadata": {},
+        }
+        info = extract_source_metadata(src)
+        assert info["title"] == "nist-csf-20"
+        assert info["doc_id"] == "nist-csf-20"
+
+
+class TestDuplicateSourceCollapsing:
+    """Validate presentation-only duplicate collapsing for identical excerpts."""
+
+    def test_collapses_identical_excerpts_preserving_count(self):
+        """Identical cover pages or repetitive excerpts collapse into 1 card."""
+        raw_sources = [
+            {
+                "document_id": "nist-csf-20",
+                "text": "Cover page boilerplate for NIST CSF 2.0",
+                "score": 0.782,
+                "source_label": "[nist-csf-20-P22]",
+            },
+            {
+                "document_id": "nist-csf-20",
+                "text": "Cover page boilerplate for NIST CSF 2.0",
+                "score": 0.782,
+                "source_label": "[nist-csf-20-P24]",
+            },
+            {
+                "document_id": "nist-csf-20",
+                "text": "Cover page boilerplate for NIST CSF 2.0",
+                "score": 0.782,
+                "source_label": "[nist-csf-20-P25]",
+            },
+            {
+                "document_id": "nist-csf-20",
+                "text": "Unique substantive text about Govern function outcomes.",
+                "score": 0.810,
+                "source_label": "[nist-csf-20-P10]",
+            },
+        ]
+
+        collapsed = collapse_display_sources(raw_sources)
+        assert len(collapsed) == 2  # 4 raw chunks -> 2 unique display cards
+        assert collapsed[0]["_collapse_count"] == 3
+        assert collapsed[0]["_labels"] == [
+            "[nist-csf-20-P22]",
+            "[nist-csf-20-P24]",
+            "[nist-csf-20-P25]",
+        ]
+        assert collapsed[1]["_collapse_count"] == 1
+        assert len(raw_sources) == 4  # underlying list untouched
+
+    def test_distinct_sources_not_collapsed(self):
+        """Distinct text chunks remain separate."""
+        raw_sources = [
+            {"document_id": "doc1", "text": "Excerpt A", "score": 0.9},
+            {"document_id": "doc1", "text": "Excerpt B", "score": 0.8},
+            {"document_id": "doc2", "text": "Excerpt A", "score": 0.7},  # different doc
+        ]
+        collapsed = collapse_display_sources(raw_sources)
+        assert len(collapsed) == 3
+
+
+class TestResponseMetricsExtraction:
+    """Validate extraction of latency, tokens, and caption metadata."""
+
+    def test_extracts_real_tokens_and_prompt_version(self):
+        """Real input/output token counts and prompt version are extracted from metadata."""
+        resp = {
+            "latency_ms": 13385.4,
+            "pipeline": "rag",
+            "model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+            "metadata": {
+                "prompt_version": "rag_v1",
+                "input_token_count": 605,
+                "output_token_count": 83,
+            },
+        }
+        metrics, captions = extract_response_metrics(resp, "rag")
+        metric_dict = dict(metrics)
+        assert metric_dict["Latency"] == "13385.4 ms"
+        assert metric_dict["Pipeline"] == "rag"
+        assert metric_dict["Input Tokens"] == "605"
+        assert metric_dict["Output Tokens"] == "83"
+        assert "Model ID: `Qwen/Qwen2.5-1.5B-Instruct`" in captions
+        assert "Prompt Version: `rag_v1`" in captions
+
+    def test_omits_missing_tokens_no_fake_na(self):
+        """If token counts are absent, they are omitted instead of displaying 'N/A'."""
+        resp = {
+            "latency_ms": 250.0,
+            "pipeline": "base",
+            "model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+            "metadata": {},
+        }
+        metrics, captions = extract_response_metrics(resp, "base")
+        metric_labels = [m[0] for m in metrics]
+        assert "Input Tokens" not in metric_labels
+        assert "Output Tokens" not in metric_labels
+        assert len(metrics) == 2  # Latency and Pipeline only
+

@@ -39,6 +39,8 @@ class SourceChunkResponse(BaseModel):
 
     chunk_id: str
     document_id: str
+    doc_id: str | None = None
+    title: str | None = None
     text: str
     score: float
     rank: int
@@ -54,6 +56,7 @@ class AskResponse(BaseModel):
     answer: str
     model_id: str
     latency_ms: float
+    prompt_version: str | None = None
     sources: list[SourceChunkResponse] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 

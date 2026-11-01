@@ -184,6 +184,14 @@ def ask_question(
         SourceChunkResponse(
             chunk_id=src.chunk_id,
             document_id=src.document_id,
+            doc_id=src.document_id,
+            title=(
+                src.metadata.get("document_title")
+                or src.metadata.get("title")
+                or src.document_id
+            )
+            if isinstance(src.metadata, dict)
+            else src.document_id,
             text=src.text,
             score=src.score,
             rank=src.rank,
@@ -199,6 +207,11 @@ def ask_question(
         answer=answer_result.answer,
         model_id=answer_result.model_id,
         latency_ms=answer_result.latency_ms,
+        prompt_version=(
+            answer_result.metadata.get("prompt_version")
+            if isinstance(answer_result.metadata, dict)
+            else None
+        ),
         sources=formatted_sources,
         metadata=answer_result.metadata,
     )

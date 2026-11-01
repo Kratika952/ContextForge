@@ -119,6 +119,128 @@ def render_sidebar() -> tuple[str, str]:
     return page, api_url
 
 
+def collapse_display_sources(sources: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Presentation-only duplicate collapsing for identical (document_id, excerpt) chunks.
+
+    Does NOT modify the underlying retrieval results or ranking.
+    Collapses exact duplicate cards when normalized excerpt + document ID are identical.
+    """
+    display_sources: list[dict[str, Any]] = []
+    seen_excerpts: dict[tuple[str, str], int] = {}
+
+    for src in sources:
+        doc_id = src.get("document_id") or src.get("doc_id") or "Unknown"
+        text_snippet = (src.get("text") or src.get("content") or "").strip()
+        norm_text = " ".join(text_snippet.split())
+        key = (doc_id, norm_text)
+
+        if key not in seen_excerpts:
+            seen_excerpts[key] = len(display_sources)
+            item = dict(src)
+            item["_collapse_count"] = 1
+            labels = [src["source_label"]] if src.get("source_label") else []
+            item["_labels"] = labels
+            display_sources.append(item)
+        else:
+            existing_idx = seen_excerpts[key]
+            display_sources[existing_idx]["_collapse_count"] += 1
+            lbl = src.get("source_label")
+            if lbl and lbl not in display_sources[existing_idx]["_labels"]:
+                display_sources[existing_idx]["_labels"].append(lbl)
+
+    return display_sources
+
+
+def extract_source_metadata(src: dict[str, Any]) -> dict[str, Any]:
+    """Extract display fields from a retrieved source chunk without fake placeholders.
+
+    Prefers real document title, real document_id, section_heading, page ranges,
+    and relevance score. Never returns 'Unknown' or 'N/A' when real data exists.
+    """
+    src_meta = src.get("metadata") or {}
+    doc_id = src.get("document_id") or src.get("doc_id")
+    title = (
+        src_meta.get("document_title")
+        or src_meta.get("title")
+        or src.get("title")
+        or doc_id
+        or "Source Document"
+    )
+    source_label = src.get("source_label") or ""
+    section = src_meta.get("section_heading") or src.get("section")
+    if section and str(section).strip().upper() in ("NONE", "N/A", "NULL"):
+        section = None
+
+    page_start = src_meta.get("page_start") or src.get("page")
+    page_end = src_meta.get("page_end")
+    page_str = None
+    if page_start is not None and str(page_start).strip().upper() not in ("NONE", "N/A", "NULL"):
+        if page_end is not None and page_end != page_start:
+            page_str = f"{page_start}–{page_end}"
+        else:
+            page_str = str(page_start)
+
+    score = src.get("score")
+    excerpt = (src.get("text") or src.get("content") or "").strip()
+
+    return {
+        "doc_id": doc_id,
+        "title": title,
+        "source_label": source_label,
+        "section": section,
+        "page": page_str,
+        "score": score,
+        "excerpt": excerpt,
+    }
+
+
+def extract_response_metrics(
+    response: dict[str, Any],
+    pipeline_key: str,
+) -> tuple[list[tuple[str, str]], list[str]]:
+    """Extract real latency, pipeline, token counts, and caption metadata.
+
+    Only includes fields that have real values (no 'N/A' placeholders).
+    """
+    meta = response.get("metadata") or {}
+    latency_ms = response.get("latency_ms", 0.0)
+    model_id = response.get("model_id") or meta.get("model_id")
+    prompt_version = response.get("prompt_version") or meta.get("prompt_version")
+
+    token_usage = response.get("token_usage") or {}
+    in_tokens = (
+        meta.get("input_token_count")
+        if meta.get("input_token_count") is not None
+        else meta.get("input_tokens")
+        if meta.get("input_tokens") is not None
+        else token_usage.get("input_tokens")
+    )
+    out_tokens = (
+        meta.get("output_token_count")
+        if meta.get("output_token_count") is not None
+        else meta.get("output_tokens")
+        if meta.get("output_tokens") is not None
+        else token_usage.get("output_tokens")
+    )
+
+    metrics: list[tuple[str, str]] = [
+        ("Latency", f"{latency_ms:.1f} ms"),
+        ("Pipeline", response.get("pipeline", pipeline_key)),
+    ]
+    if in_tokens is not None and str(in_tokens).upper() != "N/A":
+        metrics.append(("Input Tokens", str(in_tokens)))
+    if out_tokens is not None and str(out_tokens).upper() != "N/A":
+        metrics.append(("Output Tokens", str(out_tokens)))
+
+    caption_items: list[str] = []
+    if model_id and str(model_id).upper() != "UNKNOWN":
+        caption_items.append(f"Model ID: `{model_id}`")
+    if prompt_version and str(prompt_version).upper() != "N/A":
+        caption_items.append(f"Prompt Version: `{prompt_version}`")
+
+    return metrics, caption_items
+
+
 def render_assistant_page(api_url: str) -> None:
     """Render interactive QA assistant page."""
     st.title("ContextForge")
@@ -179,43 +301,68 @@ def render_assistant_page(api_url: str) -> None:
         answer_text = response.get("answer", "")
         st.markdown(answer_text)
 
-        # Performance and metadata metrics
+        # Performance and metadata metrics (only show fields with real values)
         st.markdown("---")
-        latency_ms = response.get("latency_ms", 0.0)
-        model_id = response.get("model_id", "Unknown")
-        prompt_version = response.get("prompt_version", "N/A")
-        token_usage = response.get("token_usage", {})
-        in_tokens = token_usage.get("input_tokens", "N/A")
-        out_tokens = token_usage.get("output_tokens", "N/A")
+        metrics, caption_items = extract_response_metrics(response, pipeline_key)
+        cols = st.columns(len(metrics))
+        for col, (label, val) in zip(cols, metrics):
+            col.metric(label, val)
 
-        m_col1, m_col2, m_col3, m_col4 = st.columns(4)
-        m_col1.metric("Latency", f"{latency_ms:.1f} ms")
-        m_col2.metric("Pipeline", response.get("pipeline", pipeline_key))
-        m_col3.metric("Input Tokens", str(in_tokens))
-        m_col4.metric("Output Tokens", str(out_tokens))
-
-        st.caption(f"Model ID: `{model_id}` | Prompt Version: `{prompt_version}`")
+        if caption_items:
+            st.caption(" | ".join(caption_items))
 
         # RAG Sources Display
         sources = response.get("sources", [])
         if pipeline_key == "rag":
             st.markdown("### Retrieved Sources")
             if sources:
-                for idx, src in enumerate(sources, start=1):
-                    doc_id = src.get("doc_id", "Unknown")
-                    title = src.get("title", doc_id)
-                    section = src.get("section", "N/A")
-                    score = src.get("score")
-                    score_str = f" | Score: {score:.4f}" if score is not None else ""
-                    text_snippet = src.get("text", "").strip()
+                display_sources = collapse_display_sources(sources)
 
-                    with st.expander(f"Source [{idx}]: {title} ({section}){score_str}"):
-                        st.markdown(f"**Document ID:** `{doc_id}`")
-                        st.markdown(f"**Section:** {section}")
-                        if src.get("page") is not None:
-                            st.markdown(f"**Page:** {src.get('page')}")
+                if len(display_sources) < len(sources):
+                    st.caption(
+                        f"*{len(sources)} chunks retrieved · {len(display_sources)} unique source excerpts shown*"
+                    )
+                else:
+                    st.caption(f"*{len(sources)} chunks retrieved*")
+
+                for idx, item in enumerate(display_sources, start=1):
+                    info = extract_source_metadata(item)
+                    score = info["score"]
+                    score_str = f" | Score: {score:.4f}" if score is not None else ""
+
+                    header_parts = [f"Source [{idx}]: {info['title']}"]
+                    if info["source_label"]:
+                        header_parts.append(info["source_label"])
+                    collapse_count = item.get("_collapse_count", 1)
+                    if collapse_count > 1:
+                        header_parts.append(f"({collapse_count} identical chunks)")
+
+                    expander_title = " · ".join(header_parts) + score_str
+
+                    with st.expander(expander_title):
+                        doc_text = f"{info['title']}"
+                        if info["doc_id"] and info["doc_id"] != info["title"]:
+                            doc_text += f" (`{info['doc_id']}`)"
+                        st.markdown(f"**Document:** {doc_text}")
+
+                        if info["source_label"]:
+                            labels_to_show = item.get("_labels") or [info["source_label"]]
+                            if len(labels_to_show) > 1:
+                                st.markdown(f"**Source Labels:** {', '.join(labels_to_show)}")
+                            else:
+                                st.markdown(f"**Source Label:** `{info['source_label']}`")
+
+                        if info["section"]:
+                            st.markdown(f"**Section:** {info['section']}")
+
+                        if info["page"]:
+                            st.markdown(f"**Page:** {info['page']}")
+
+                        if score is not None:
+                            st.markdown(f"**Relevance Score:** {score:.4f}")
+
                         st.markdown("**Excerpt:**")
-                        st.text(text_snippet)
+                        st.text(info["excerpt"])
             else:
                 st.info("No external document sources were retrieved for this query.")
 
